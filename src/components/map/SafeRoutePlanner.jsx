@@ -6,11 +6,13 @@ import { Link } from 'react-router-dom';
 import { Loader } from '@googlemaps/js-api-loader';
 import axios from 'axios';
 import OpenAIService from '../../services/OpenAIService';
+import { useTranslation } from 'react-i18next'; // Add this import for translations
 
 // Define libraries array outside the component to prevent unnecessary reloads
 const GOOGLE_MAPS_LIBRARIES = ["places", "routes"];
 
 const SafeRoutePlanner = () => {
+  const { t } = useTranslation(); // Initialize translation hook
   const { user } = useAuth();
   const [source, setSource] = useState('');
   const [destination, setDestination] = useState('');
@@ -24,7 +26,8 @@ const SafeRoutePlanner = () => {
   const [alternativeRoutes, setAlternativeRoutes] = useState([]);
   const [selectedRoute, setSelectedRoute] = useState(0);
   const [weatherData, setWeatherData] = useState(null);
-  
+  const [transitMode, setTransitMode] = useState('WALKING'); // 'WALKING', 'TRANSIT', or 'BOTH'
+
   const mapRef = useRef(null);
   const sourceAutocompleteRef = useRef(null);
   const destAutocompleteRef = useRef(null);
@@ -165,10 +168,10 @@ const SafeRoutePlanner = () => {
   // Function to fetch weather data
   const fetchWeatherData = async (lat, lng) => {
     try {
+      // Use metric units directly in the API request
       const response = await axios.get(
-        `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lng}&units=imperial&appid=${weatherApiKey}`
+        `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lng}&units=metric&appid=${weatherApiKey}`
       );
-      
       const data = response.data;
       setWeatherData(data);
       
@@ -176,7 +179,7 @@ const SafeRoutePlanner = () => {
       const temp = data.main.temp;
       const humidity = data.main.humidity;
       
-      // Simple heat index calculation - for more accuracy you'd use a more complex formula
+      // Calculate heat index using the Celsius value
       const heatIndex = calculateHeatIndex(temp, humidity);
       setCurrentHeatIndex(heatIndex);
       
@@ -188,31 +191,43 @@ const SafeRoutePlanner = () => {
     }
   };
   
-  // Calculate heat index
+  // Calculate heat index (modified to work with Celsius)
   const calculateHeatIndex = (temperature, relativeHumidity) => {
-    // Simple heat index calculation (Fahrenheit)
-    if (temperature < 80) return temperature;
+    // Convert Celsius to Fahrenheit for the formula
+    const tempF = (temperature * 9/5) + 32;
     
-    let heatIndex = 0.5 * (temperature + 61.0 + ((temperature - 68.0) * 1.2) + (relativeHumidity * 0.094));
+    // Simple heat index calculation (Fahrenheit)
+    if (tempF < 80) return tempF;
+    
+    let heatIndex = 0.5 * (tempF + 61.0 + ((tempF - 68.0) * 1.2) + (relativeHumidity * 0.094));
     
     if (heatIndex > 80) {
-      heatIndex = -42.379 + 2.04901523 * temperature + 10.14333127 * relativeHumidity
-        - 0.22475541 * temperature * relativeHumidity - 0.00683783 * temperature * temperature
-        - 0.05481717 * relativeHumidity * relativeHumidity + 0.00122874 * temperature * temperature * relativeHumidity
-        + 0.00085282 * temperature * relativeHumidity * relativeHumidity - 0.00000199 * temperature * temperature * relativeHumidity * relativeHumidity;
+      heatIndex = -42.379 + 2.04901523 * tempF + 10.14333127 * relativeHumidity
+        - 0.22475541 * tempF * relativeHumidity - 0.00683783 * tempF * tempF
+        - 0.05481717 * relativeHumidity * relativeHumidity + 0.00122874 * tempF * tempF * relativeHumidity
+        + 0.00085282 * tempF * relativeHumidity * relativeHumidity - 0.00000199 * tempF * tempF * relativeHumidity * relativeHumidity;
     }
     
     return Math.round(heatIndex);
   };
   
   // Generate recommendations based on heat index and selected route
-  const generateRecommendations = async (heatIndex) => {
+  const generateRecommendations = async (heatIndex, selectedRouteData) => {
     // Start with fallback recommendations
     let routeType = 'direct';
     let duration = 30; // default 30 minutes
     
-    // If we have a selected route, use its data
-    if (selectedRoute !== null && alternativeRoutes.length > 0) {
+    // If we have a selected route data provided, use it
+    if (selectedRouteData) {
+      routeType = selectedRouteData.shadeCoverage > 50 ? 'shaded' : 'direct';
+      // Extract numeric duration in minutes from string like "25 mins"
+      const durationMatch = selectedRouteData.duration.match(/(\d+)/);
+      if (durationMatch) {
+        duration = parseInt(durationMatch[1], 10);
+      }
+    }
+    // Otherwise try to use the currently selected route
+    else if (selectedRoute !== null && alternativeRoutes.length > 0) {
       const route = alternativeRoutes[selectedRoute];
       routeType = route.shadeCoverage > 50 ? 'shaded' : 'direct';
       // Extract numeric duration in minutes from string like "25 mins"
@@ -232,7 +247,7 @@ const SafeRoutePlanner = () => {
         setLoading(true);
         
         // Prepare data for API
-        const routeData = alternativeRoutes[selectedRoute];
+        const routeData = selectedRouteData || alternativeRoutes[selectedRoute];
         const userData = user ? {
           // Get any user profile data that might be relevant
           age: user.age || null,
@@ -271,52 +286,152 @@ const SafeRoutePlanner = () => {
     setLoading(true);
     setError('');
     
-    const request = {
-      origin: start,
-      destination: end,
-      travelMode: google.maps.TravelMode.WALKING,
-      provideRouteAlternatives: true, // Request alternative routes
-      unitSystem: google.maps.UnitSystem.IMPERIAL
-    };
-    
-    directionsService.route(request, (result, status) => {
-      if (status === google.maps.DirectionsStatus.OK) {
-        setLoading(false);
-        directionsRenderer.setDirections(result);
-        directionsRenderer.setRouteIndex(0);
-        setSelectedRoute(0);
-        
-        // Process route alternatives
-        if (result.routes && result.routes.length > 0) {
-          const routes = result.routes.map((route, index) => {
-            // Extract key information about the route
-            const distance = route.legs[0].distance.text;
-            const duration = route.legs[0].duration.text;
-            
-            // Calculate shade score (simulated in this example)
-            // In a real implementation, you would use tree coverage data, building shadows, etc.
-            const shadeCoverage = calculateSimulatedShadeCoverage(route);
-            
-            // Calculate heat exposure risk based on distance and shade
-            const heatExposureRisk = calculateHeatExposureRisk(route, shadeCoverage);
-            
-            return {
-              index,
-              distance,
-              duration,
-              shadeCoverage,
-              heatExposureRisk,
-              steps: route.legs[0].steps
-            };
-          });
+    // Reset alternative routes
+    setAlternativeRoutes([]);
+
+    // First, calculate the walking route if needed
+    if (transitMode === 'WALKING' || transitMode === 'BOTH') {
+      const walkingRequest = {
+        origin: start,
+        destination: end,
+        travelMode: google.maps.TravelMode.WALKING,
+        provideRouteAlternatives: true,
+        unitSystem: google.maps.UnitSystem.METRIC
+      };
+      
+      directionsService.route(walkingRequest, (result, status) => {
+        if (status === google.maps.DirectionsStatus.OK) {
+          // Only set directions if walking mode is active
+          if (transitMode === 'WALKING') {
+            setLoading(false);
+            directionsRenderer.setDirections(result);
+            directionsRenderer.setRouteIndex(0);
+            setSelectedRoute(0);
+          }
           
-          setAlternativeRoutes(routes);
+          // Process walking route alternatives
+          if (result.routes && result.routes.length > 0) {
+            const routes = result.routes.map((route, index) => {
+              // Extract key information about the route
+              const distance = route.legs[0].distance.text;
+              const duration = route.legs[0].duration.text;
+              
+              // Your existing calculation for shade coverage
+              const shadeCoverage = calculateSimulatedShadeCoverage(route);
+              
+              // Your existing calculation for heat exposure risk
+              const heatExposureRisk = calculateHeatExposureRisk(route, shadeCoverage);
+              
+              return {
+                type: 'WALKING',
+                index,
+                distance,
+                duration,
+                shadeCoverage,
+                heatExposureRisk,
+                steps: route.legs[0].steps,
+                route: route
+              };
+            });
+            
+            setAlternativeRoutes(prevRoutes => [...prevRoutes, ...routes]);
+          }
+        } else {
+          if (transitMode === 'WALKING') {
+            setLoading(false);
+            setError("Walking directions request failed due to " + status);
+          }
         }
-      } else {
+      });
+    }
+    
+    // Then, calculate the transit route if needed
+    if (transitMode === 'TRANSIT' || transitMode === 'BOTH') {
+      const transitRequest = {
+        origin: start,
+        destination: end,
+        travelMode: google.maps.TravelMode.TRANSIT,
+        transitOptions: {
+          modes: [google.maps.TransitMode.SUBWAY, google.maps.TransitMode.RAIL, google.maps.TransitMode.BUS],
+          routingPreference: google.maps.TransitRoutePreference.FEWER_TRANSFERS
+        },
+        provideRouteAlternatives: true,
+        unitSystem: google.maps.UnitSystem.METRIC
+      };
+      
+      directionsService.route(transitRequest, (result, status) => {
         setLoading(false);
-        setError("Directions request failed due to " + status);
-      }
-    });
+        
+        if (status === google.maps.DirectionsStatus.OK) {
+          // Only set directions if transit mode is active
+          if (transitMode === 'TRANSIT') {
+            directionsRenderer.setDirections(result);
+            directionsRenderer.setRouteIndex(0);
+            setSelectedRoute(0);
+          }
+          
+          // Process transit route alternatives
+          if (result.routes && result.routes.length > 0) {
+            const routes = result.routes.map((route, index) => {
+              // Extract key information about the route
+              const distance = route.legs[0].distance.text;
+              const duration = route.legs[0].duration.text;
+              
+              // For transit routes, extract transit specific information
+              const transitSteps = route.legs[0].steps.filter(step => step.travel_mode === 'TRANSIT');
+              const transitDetails = transitSteps.map(step => {
+                return {
+                  line: step.transit?.line?.name || '',
+                  shortName: step.transit?.line?.short_name || '',
+                  vehicle: step.transit?.line?.vehicle?.type || '',
+                  icon: step.transit?.line?.vehicle?.icon || '',
+                  color: step.transit?.line?.color || '#1976D2',
+                  textColor: step.transit?.line?.text_color || '#FFFFFF',
+                  departureStop: step.transit?.departure_stop?.name || '',
+                  arrivalStop: step.transit?.arrival_stop?.name || '',
+                  numStops: step.transit?.num_stops || 0,
+                  departureTime: step.transit?.departure_time?.text || '',
+                  arrivalTime: step.transit?.arrival_time?.text || '',
+                  headsign: step.transit?.headsign || ''
+                };
+              });
+              
+              // Heat exposure risk is lower for transit routes
+              // Buses have moderate shade, metro has full shade
+              const hasMetro = transitSteps.some(step => 
+                step.transit?.line?.vehicle?.type === 'SUBWAY' || 
+                step.transit?.line?.vehicle?.type === 'RAIL'
+              );
+              
+              const transportType = hasMetro ? 'METRO' : 'BUS';
+              // Assign high shade coverage to metro, moderate to bus
+              const shadeCoverage = hasMetro ? 90 : 70;
+              // Heat risk is generally lower for transit
+              const heatExposureRisk = hasMetro ? "Low" : "Moderate";
+              
+              return {
+                type: 'TRANSIT',
+                transitType: transportType,
+                index,
+                distance,
+                duration,
+                shadeCoverage,
+                heatExposureRisk,
+                steps: route.legs[0].steps,
+                transitDetails,
+                route: route
+              };
+            });
+            
+            setAlternativeRoutes(prevRoutes => [...prevRoutes, ...routes]);
+          }
+        } else {
+          if (transitMode === 'TRANSIT') {
+            setError("Transit directions request failed due to " + status);
+          }
+        }
+      });
+    }
   };
   
   // This function would ideally use real GIS data for tree canopy and building shadow coverage
@@ -413,11 +528,16 @@ const SafeRoutePlanner = () => {
     }
   };
   
-  // Select an alternative route
+  // Select a route and display it
   const selectRoute = (index) => {
     setSelectedRoute(index);
-    if (directionsRenderer) {
-      directionsRenderer.setRouteIndex(index);
+  
+    if (directionsRenderer && alternativeRoutes[index]) {
+      directionsRenderer.setDirections({routes: [alternativeRoutes[index].route]});
+      directionsRenderer.setRouteIndex(0);
+      
+      // Generate recommendations based on selected route
+      generateRecommendations(currentHeatIndex, alternativeRoutes[index]);
     }
   };
   
@@ -436,7 +556,6 @@ const SafeRoutePlanner = () => {
         return "bg-gray-100 text-gray-800 border-gray-200";
     }
   };
-  
   return (
     <div className="min-h-screen bg-amber-50">
       <Navbar />
@@ -491,6 +610,43 @@ const SafeRoutePlanner = () => {
                     required
                   />
                 </div>
+                  
+                {/* Transit Mode Selector */}
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Transport Mode
+                  </label>
+                  <div className="flex space-x-2">
+                    <button
+                      type="button"
+                      onClick={() => setTransitMode('WALKING')}
+                      className={`flex-1 py-2 px-3 rounded-lg flex items-center justify-center ${
+                        transitMode === 'WALKING'
+                          ? 'bg-amber-100 border-2 border-amber-500 text-amber-700'
+                          : 'bg-gray-100 border border-gray-300 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                        <path d="M13 4v16M7 4v16M17 4v16"/>
+                      </svg>
+                      Walking Routes
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTransitMode('TRANSIT')}
+                      className={`flex-1 py-2 px-3 rounded-lg flex items-center justify-center ${
+                        transitMode === 'TRANSIT'
+                          ? 'bg-blue-100 border-2 border-blue-500 text-blue-700'
+                          : 'bg-gray-100 border border-gray-300 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M4 16v4.2a.8.8 0 0 0 .8.8h14.4a.8.8 0 0 0 .8-.8V16M4 12v-1.2a.8.8 0 0 1 .8-.8h14.4a.8.8 0 0 1 .8.8V12M2 12h20M10 16v4M14 16v4M10 2v10M14 2v10"/>
+                      </svg>
+                      Metro/Bus Routes
+                    </button>
+                  </div>
+                </div>
                 
                 <button
                   type="submit"
@@ -519,7 +675,7 @@ const SafeRoutePlanner = () => {
             {/* Current Weather Information */}
             {weatherData && (
               <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-                <h2 className="text-xl font-semibold mb-4">Current Conditions</h2>
+                <h2 className="text-xl font-semibold mb-4">{t ? t('safeRoute.currentConditions.title') : 'Current Conditions'}</h2>
                 
                 <div className="flex items-center mb-4">
                   <img 
@@ -528,27 +684,27 @@ const SafeRoutePlanner = () => {
                     className="w-16 h-16 mr-2"
                   />
                   <div>
-                    <p className="text-2xl font-bold">{Math.round(weatherData.main.temp)}°F</p>
+                    <p className="text-2xl font-bold">{Math.round(weatherData.main.temp)}°C</p>
                     <p className="text-gray-600 capitalize">{weatherData.weather[0].description}</p>
                   </div>
                 </div>
                 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm text-gray-500">Feels Like</p>
-                    <p className="font-medium">{Math.round(weatherData.main.feels_like)}°F</p>
+                    <p className="text-sm text-gray-500">{t ? t('safeRoute.currentConditions.feelsLike') : 'Feels Like'}</p>
+                    <p className="font-medium">{Math.round(weatherData.main.feels_like)}°C</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Humidity</p>
+                    <p className="text-sm text-gray-500">{t ? t('safeRoute.currentConditions.humidity') : 'Humidity'}</p>
                     <p className="font-medium">{weatherData.main.humidity}%</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Wind</p>
-                    <p className="font-medium">{Math.round(weatherData.wind.speed)} mph</p>
+                    <p className="text-sm text-gray-500">{t ? t('safeRoute.currentConditions.wind') : 'Wind'}</p>
+                    <p className="font-medium">{Math.round(weatherData.wind.speed * 3.6)} km/h</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Heat Index</p>
-                    <p className="font-medium">{currentHeatIndex || "N/A"}°F</p>
+                    <p className="text-sm text-gray-500">{t ? t('safeRoute.currentConditions.heatIndex') : 'Heat Index'}</p>
+                    <p className="font-medium">{currentHeatIndex ? Math.round(currentHeatIndex) : "N/A"}°C</p>
                   </div>
                 </div>
                 
@@ -564,12 +720,12 @@ const SafeRoutePlanner = () => {
                   }`}>
                     <p className="font-medium">
                       {currentHeatIndex >= 105
-                        ? "Danger: Extreme heat conditions"
+                        ? t ? t('safeRoute.currentConditions.danger') : 'Danger: Extreme heat conditions'
                         : currentHeatIndex >= 90
-                        ? "Warning: High heat risk"
+                        ? t ? t('safeRoute.currentConditions.warning') : 'Warning: High heat risk'
                         : currentHeatIndex >= 80
-                        ? "Caution: Moderate heat risk"
-                        : "Low heat risk"}
+                        ? t ? t('safeRoute.currentConditions.caution') : 'Caution: Moderate heat risk'
+                        : t ? t('safeRoute.currentConditions.low') : 'Low heat risk'}
                     </p>
                   </div>
                 )}
@@ -579,18 +735,61 @@ const SafeRoutePlanner = () => {
             {/* Heat Safety Recommendations */}
             {recommendations.length > 0 && (
               <div className="bg-white rounded-lg shadow-md p-6">
-                <h2 className="text-xl font-semibold mb-4">Heat Safety Tips</h2>
+                <h2 className="text-xl font-semibold mb-4">{t ? t('safeRoute.tips.title') : 'Heat Safety Tips'}</h2>
                 
-                <ul className="space-y-2">
+                {/* Heat Risk Level Indicator */}
+                {currentHeatIndex && (
+                  <div className={`mb-4 p-3 rounded-lg border ${
+                    currentHeatIndex >= 105
+                      ? 'bg-red-100 border-red-300 text-red-800'
+                      : currentHeatIndex >= 90
+                      ? 'bg-orange-100 border-orange-300 text-orange-800'
+                      : currentHeatIndex >= 80
+                      ? 'bg-yellow-100 border-yellow-300 text-yellow-800'
+                      : 'bg-green-100 border-green-300 text-green-800'
+                  }`}>
+                    <p className="font-medium text-center">
+                      {currentHeatIndex >= 105
+                        ? t ? t('safeRoute.currentConditions.danger') : 'Danger: Extreme heat conditions'
+                        : currentHeatIndex >= 90
+                        ? t ? t('safeRoute.currentConditions.warning') : 'Warning: High heat risk'
+                        : currentHeatIndex >= 80
+                        ? t ? t('safeRoute.currentConditions.caution') : 'Caution: Moderate heat risk'
+                        : t ? t('safeRoute.currentConditions.low') : 'Low heat risk'}
+                    </p>
+                  </div>
+                )}
+                
+                {/* Organized Tips List */}
+                <div className="grid grid-cols-1 gap-3">
                   {recommendations.map((tip, index) => (
-                    <li key={index} className="flex items-start">
-                      <svg className="w-5 h-5 text-amber-500 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd"></path>
-                      </svg>
-                      <span>{tip}</span>
-                    </li>
+                    <div key={index} className="flex items-start p-3 bg-amber-50 rounded-lg hover:bg-amber-100 transition-colors">
+                      <div className="mr-3 mt-0.5 text-amber-600">
+                        {index < 3 ? (
+                          // Priority icon for first 3 tips
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                          </svg>
+                        ) : (
+                          // Info icon for other tips
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        )}
+                      </div>
+                      <span className="text-gray-800">{tip}</span>
+                    </div>
                   ))}
-                </ul>
+                </div>
+                
+                {/* Transit-specific tip for transit routes */}
+                {selectedRoute !== null && alternativeRoutes[selectedRoute]?.type === 'TRANSIT' && (
+                  <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <p className="text-blue-800 font-medium">
+                      Transit routes offer better heat protection through air conditioning and reduced outdoor exposure.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -609,7 +808,7 @@ const SafeRoutePlanner = () => {
             {/* Route Alternatives */}
             {alternativeRoutes.length > 0 && (
               <div className="bg-white rounded-lg shadow-md p-6">
-                <h2 className="text-xl font-semibold mb-4">Available Routes</h2>
+                <h2 className="text-xl font-semibold mb-4">{t ? t('safeRoute.routes.title') : 'Available Routes'}</h2>
                 
                 {error && (
                   <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
@@ -621,52 +820,97 @@ const SafeRoutePlanner = () => {
                   {alternativeRoutes.map((route, index) => (
                     <div 
                       key={index}
-                      className={`border rounded-lg p-4 cursor-pointer transition duration-200 ${
+                      className={`border rounded-lg p-4 cursor-pointer transition-colors ${
                         selectedRoute === index 
                           ? 'border-blue-500 bg-blue-50' 
-                          : 'border-gray-200 hover:border-blue-300'
+                          : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50/50'
                       }`}
                       onClick={() => selectRoute(index)}
                     >
+                      {/* Route header with type icon */}
                       <div className="flex items-center justify-between mb-2">
-                        <div className="font-medium">
-                          Route {index + 1} {index === 0 ? " (Fastest)" : ""}
+                        <div className="font-medium flex items-center">
+                          {route.type === 'TRANSIT' && (
+                            <span className="flex items-center mr-2">
+                              {route.transitType === 'METRO' ? (
+                                <svg className="w-5 h-5 mr-1 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                                  <path d="M4 16v4.2a.8.8 0 0 0 .8.8h14.4a.8.8 0 0 0 .8-.8V16M4 12v-1.2a.8.8 0 0 1 .8-.8h14.4a.8.8 0 0 1 .8.8V12M2 12h20M10 16v4M14 16v4M10 2v10M14 2v10"/>
+                                </svg>
+                              ) : (
+                                <svg className="w-5 h-5 mr-1 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                                  <path d="M8 7h12m0 0l-4-4m4 4l-4 4M4 17h12m0 0l-4-4m4 4l-4 4"/>
+                                </svg>
+                              )}
+                              {route.transitType}
+                            </span>
+                          )}
+                          Route {index + 1} {index === 0 ? ` (${route.type === 'WALKING' ? t ? t('safeRoute.routes.fastest') : "Fastest Walking" : "Fastest Transit"})` : ""}
                         </div>
                         <span className={`px-2 py-1 text-xs rounded-full border ${getHeatRiskColor(route.heatExposureRisk)}`}>
-                          {route.heatExposureRisk} Heat Risk
+                          {t ? t('safeRoute.routes.heatRisk') : 'Heat Risk'}: {route.heatExposureRisk}
                         </span>
                       </div>
                       
+                      {/* Route details grid */}
                       <div className="grid grid-cols-3 gap-2 mb-2">
                         <div>
-                          <p className="text-xs text-gray-500">Distance</p>
+                          <p className="text-xs text-gray-500">{t ? t('safeRoute.routes.distance') : 'Distance'}</p>
                           <p className="font-medium">{route.distance}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-gray-500">Est. Time</p>
+                          <p className="text-xs text-gray-500">{t ? t('safeRoute.routes.time') : 'Est. Time'}</p>
                           <p className="font-medium">{route.duration}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-gray-500">Shade Coverage</p>
-                          <p className="font-medium">{route.shadeCoverage}%</p>
+                          <p className="text-xs text-gray-500">{route.type === 'WALKING' ? t ? t('safeRoute.routes.shadeCoverage') : 'Shade Coverage' : 'Transit Type'}</p>
+                          <p className="font-medium">
+                            {route.type === 'WALKING' ? `${route.shadeCoverage}%` : route.transitType}
+                          </p>
                         </div>
                       </div>
                       
+                      {/* Route details when selected */}
                       {selectedRoute === index && (
                         <div className="mt-3 pt-3 border-t border-gray-200">
-                          <p className="text-sm font-medium mb-2">Route Overview:</p>
+                          <p className="text-sm font-medium mb-2">{t ? t('safeRoute.routes.overview') : 'Route Overview'}:</p>
                           <ul className="space-y-1 text-sm text-gray-600">
-                            {route.steps.slice(0, 3).map((step, stepIndex) => (
-                              <li key={stepIndex} className="flex items-start">
-                                <span className="inline-block bg-gray-200 text-gray-700 w-5 h-5 rounded-full text-xs flex items-center justify-center mr-2 mt-0.5">
-                                  {stepIndex + 1}
-                                </span>
-                                <span dangerouslySetInnerHTML={{ __html: step.instructions }}></span>
-                              </li>
-                            ))}
-                            {route.steps.length > 3 && (
+                            {route.type === 'TRANSIT' ? (
+                              // Transit route details
+                              route.transitDetails.map((transit, transitIndex) => (
+                                <li key={transitIndex} className="flex items-start mb-3">
+                                  <div 
+                                    className="w-6 h-6 rounded-full flex items-center justify-center mr-2 mt-0.5 text-white text-xs"
+                                    style={{ backgroundColor: transit.color || '#1976D2' }}
+                                  >
+                                    {transitIndex + 1}
+                                  </div>
+                                  <div>
+                                    <div className="font-medium" style={{ color: transit.color || '#1976D2' }}>
+                                      {transit.line} {transit.shortName && `(${transit.shortName})`}
+                                    </div>
+                                    <div className="text-xs text-gray-500">
+                                      {transit.departureStop} ➝ {transit.arrivalStop} • {transit.numStops} stops
+                                    </div>
+                                    <div className="text-xs text-gray-500">
+                                      Departs: {transit.departureTime} • Arrives: {transit.arrivalTime}
+                                    </div>
+                                  </div>
+                                </li>
+                              ))
+                            ) : (
+                              // Walking route details
+                              route.steps.slice(0, 3).map((step, stepIndex) => (
+                                <li key={stepIndex} className="flex items-start">
+                                  <span className="inline-block bg-gray-200 text-gray-700 w-5 h-5 rounded-full text-xs flex items-center justify-center mr-2 mt-0.5">
+                                    {stepIndex + 1}
+                                  </span>
+                                  <span dangerouslySetInnerHTML={{ __html: step.instructions }}></span>
+                                </li>
+                              ))
+                            )}
+                            {route.type === 'WALKING' && route.steps.length > 3 && (
                               <li className="text-xs text-gray-500 italic pl-7">
-                                + {route.steps.length - 3} more steps
+                                + {route.steps.length - 3} {t ? t('safeRoute.routes.moreSteps') : 'more steps'}
                               </li>
                             )}
                           </ul>
@@ -681,7 +925,5 @@ const SafeRoutePlanner = () => {
         </div>
       </div>
     </div>
-  );
-};
-
-export default SafeRoutePlanner;
+  )}
+  export default SafeRoutePlanner;
