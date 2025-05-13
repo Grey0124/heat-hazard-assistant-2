@@ -56,7 +56,7 @@ const LoginForm = ({ onToggleForm, onSuccess }) => {
 
   return (
     <div className="p-8">
-      <h2 className="text-2xl font-bold text-navy-900 mb-6 text-center">{t('auth.signIn.title')}</h2>
+      <h2 className="text-2xl font-bold text-black mb-6 text-center">{t('auth.signIn.title')}</h2>
       
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
@@ -64,7 +64,7 @@ const LoginForm = ({ onToggleForm, onSuccess }) => {
         </div>
       )}
       
-      <div className="space-y-4">
+      <div className="space-y-4 bg-amber-50 p-6 rounded-lg shadow-md">
         <button 
           type="button"
           onClick={handleGoogleSignIn}
@@ -111,7 +111,7 @@ const LoginForm = ({ onToggleForm, onSuccess }) => {
               id="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-amber-500"
               placeholder={t('auth.signIn.emailPlaceholder')}
               required
             />
@@ -126,7 +126,7 @@ const LoginForm = ({ onToggleForm, onSuccess }) => {
               id="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-amber-500"
               placeholder={t('auth.signIn.passwordPlaceholder')}
               required
             />
@@ -134,7 +134,7 @@ const LoginForm = ({ onToggleForm, onSuccess }) => {
           
           <button
             type="submit"
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg flex items-center justify-center"
+            className="w-full bg-amber-600 hover:bg-amber-700 text-white font-semibold py-2 px-4 rounded-lg flex items-center justify-center"
             disabled={isLoading}
           >
             {isLoading ? (
@@ -154,7 +154,7 @@ const LoginForm = ({ onToggleForm, onSuccess }) => {
         <p className="text-center text-sm text-gray-600 mt-4">
           {t('auth.signIn.noAccount')}{' '}
           <button 
-            className="text-blue-600 hover:text-blue-800 font-medium"
+            className="text-amber-600 hover:text-amber-800 font-medium"
             onClick={onToggleForm}
           >
             {t('auth.signIn.signUp')}

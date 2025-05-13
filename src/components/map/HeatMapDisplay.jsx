@@ -692,7 +692,7 @@ const HeatMapDisplay = ({ currentLocation, heatIndex, weatherData }) => {
   if (!isLoaded) {
     return (
       <div className="w-full h-full flex items-center justify-center bg-gray-100">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600"></div>
       </div>
     );
   }
@@ -700,7 +700,7 @@ const HeatMapDisplay = ({ currentLocation, heatIndex, weatherData }) => {
   return (
     <div className="relative w-full h-full">
       {/* Search Box */}
-      <div className="absolute top-2 left-56 z-10 w-64">
+      <div className="absolute top-2 right-14 z-10 w-64">
         {isLoaded && (
           <StandaloneSearchBox
             onLoad={onLoadSearchBox}
@@ -716,7 +716,7 @@ const HeatMapDisplay = ({ currentLocation, heatIndex, weatherData }) => {
       </div>
 
       {/* Filter Controls */}
-      <div className="absolute top-3 right-14 z-10 bg-white rounded-lg shadow-md p-2 flex gap-2">
+      {/* <div className="absolute top-3 right-14 z-10 bg-white rounded-lg shadow-md p-2 flex gap-2">
         <button
           onClick={() => setSelectedFilter('temperature')}
           className={`px-3 py-1 text-xs rounded-full ${selectedFilter === 'temperature'
@@ -741,7 +741,7 @@ const HeatMapDisplay = ({ currentLocation, heatIndex, weatherData }) => {
         >
           Heat Index
         </button>
-      </div>
+      </div> */}
 
       <GoogleMap
         mapContainerStyle={containerStyle}
@@ -943,11 +943,11 @@ const HeatMapDisplay = ({ currentLocation, heatIndex, weatherData }) => {
       )}
 
       {/* Legend */}
-      <div className="absolute top-14 right-2 bg-white p-3 rounded-lg shadow-md z-10 max-w-xs">
+      <div className="absolute bottom-1 left-2 bg-white p-3 rounded-lg shadow-md z-10 max-w-xs">
         <div className="flex justify-between items-center mb-2">
-          <h4 className="font-semibold text-sm">
+          <h4 className="font-semibold text-sm mr-3">
             {selectedFilter === 'temperature' ? 'Temperature' :
-              selectedFilter === 'humidity' ? 'Humidity' : 'Heat Index'} Legend
+              selectedFilter === 'humidity' ? 'Humidity' : 'Heat Index'}
           </h4>
           <button
             className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded"
@@ -1049,7 +1049,7 @@ const HeatMapDisplay = ({ currentLocation, heatIndex, weatherData }) => {
       </div>
 
       {/* Info box with tips based on current conditions */}
-      <div className="absolute bottom-1 left-2 bg-white p-3 rounded-lg shadow-md z-10 max-w-xs">
+      {/* <div className="absolute bottom-1 left-2 bg-white p-3 rounded-lg shadow-md z-10 max-w-xs">
         <h4 className="font-semibold text-sm mb-1">Heat Safety Tips</h4>
         <div className="text-xs space-y-2">
           {heatMapData.length > 0 && (
@@ -1067,7 +1067,7 @@ const HeatMapDisplay = ({ currentLocation, heatIndex, weatherData }) => {
             </>
           )}
         </div>
-      </div>
+      </div> */}
     </div>
   );
 };

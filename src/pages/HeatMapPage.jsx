@@ -215,17 +215,16 @@ const HeatMapPage = () => {
       <Navbar />
 
       <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold text-navy-900">Heat Map</h1>
+        <div className="flex items-center justify mb-6">
           <Link
             to="/"
-            className="bg-white hover:bg-gray-100 text-navy-900 font-semibold py-2 px-4 rounded-lg border border-gray-300 transition duration-300 flex items-center"
+            className=" text-black font-semibold py-2 px-4 flex items-center"
           >
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
-            Back to Home
           </Link>
+          <h1 className="text-3xl font-bold text-navy-900">Heat Map</h1>
         </div>
 
         {/* Location search */}
@@ -235,12 +234,12 @@ const HeatMapPage = () => {
               type="text"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
-              placeholder="Enter a location (e.g., London, Tokyo, New York)"
+              placeholder="Enter a location (e.g., Bangalore, Mumbai)"
               className="flex-grow px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-600"
             />
             <button
               type="submit"
-              className="bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-2 px-6 rounded-lg"
+              className="bg-amber-600 hover:bg-amber-700 text-white font-semibold py-2 px-6 rounded-lg"
             >
               Search
             </button>
@@ -250,7 +249,7 @@ const HeatMapPage = () => {
         {/* Weather and heat risk information */}
         {loading ? (
           <div className="flex justify-center my-8">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-500"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-500"></div>
           </div>
         ) : error ? (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
@@ -324,9 +323,9 @@ const HeatMapPage = () => {
         {/* Interactive Heat Map - Enhanced placeholder until Google Maps API is set up */}
         {weatherData && heatIndex && (
           <div className="mt-8 bg-white rounded-lg shadow-md overflow-hidden">
-            <div className="bg-yellow-600 p-4">
+            <div className="bg-amber-600 p-4">
               <h2 className="text-xl font-semibold text-white">Heat Risk Map</h2>
-              <p className="text-blue-100 text-sm">
+              <p className="text-white text-sm">
                 Visualizing temperature variations and heat risk zones in this area
               </p>
             </div>

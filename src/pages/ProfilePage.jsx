@@ -246,23 +246,22 @@ const ProfilePage = () => {
       <Navbar />
 
       <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold text-navy-900">My Profile</h1>
+        <div className="flex items-center justify mb-6">
           <Link
             to="/"
-            className="bg-white hover:bg-gray-100 text-navy-900 font-semibold py-2 px-4 rounded-lg border border-gray-300 transition duration-300 flex items-center"
+            className=" text-black font-semibold py-2 px-4 flex items-center"
           >
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
-            Back to Home
           </Link>
+          <h1 className="text-3xl font-bold text-black">My Profile</h1>
         </div>
 
         <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          <div className="bg-orange-500 p-6">
+          <div className="bg-amber-600 p-6">
             <div className="flex items-center">
-              <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center text-orange-500 text-2xl font-bold">
+              <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center text-amber-500 text-2xl font-bold">
                 {user.displayName ? user.displayName.charAt(0).toUpperCase() : user.email.charAt(0).toUpperCase()}
               </div>
               <div className="ml-6">
@@ -272,7 +271,7 @@ const ProfilePage = () => {
             </div>
           </div>
 
-          <div className="p-6">
+          {/* <div className="p-6">
             <h3 className="text-xl font-semibold mb-4">Notification Preferences</h3>
 
             <div className="space-y-4">
@@ -370,7 +369,6 @@ const ProfilePage = () => {
             </div>
 
             <div className="mt-8 flex flex-wrap gap-4">
-              {/* Success message */}
               {saveSuccess && (
                 <div className="w-full bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4 flex items-center">
                   <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -404,7 +402,7 @@ const ProfilePage = () => {
                 {loading ? 'Signing Out...' : 'Sign Out'}
               </button>
             </div>
-          </div>
+          </div> */}
         </div>
 
         {/* My Reports Section */}
@@ -419,7 +417,7 @@ const ProfilePage = () => {
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="border border-gray-300 rounded-lg py-1.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="border border-gray-300 rounded-lg py-1.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                 >
                   <option value="all">All Reports</option>
                   <option value="pending">Pending</option>
@@ -486,7 +484,7 @@ const ProfilePage = () => {
                             </div>
                           )}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="px-6 py-4 whitespace-wrap text-sm text-gray-500">
                           {report.location || "Location not specified"}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -500,7 +498,7 @@ const ProfilePage = () => {
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <button
                             onClick={() => handleViewDetails(report)}
-                            className="text-blue-600 hover:text-blue-900"
+                            className="text-amber-600 hover:text-blue-900"
                           >
                             View Details
                           </button>
