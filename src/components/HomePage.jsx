@@ -69,7 +69,7 @@ const HomePage = () => {
               {!user ? (
                 <button
                   onClick={openAuthModal}
-                  className="bg-amber-500 hover:bg-amber-600 text-black font-semibold py-3 px-8 rounded-full inline-block border border-gray-300 transition duration-300"
+                  className="bg-amber-600 hover:bg-amber-700 text-white font-semibold py-3 px-8 rounded-full inline-block border border-gray-300 transition duration-300"
                 >
                   {t('home.hero.signIn')}
                 </button>

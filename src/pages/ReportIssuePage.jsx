@@ -77,26 +77,26 @@ const ReportIssuePage = () => {
   };
 
   const issueTypes = [
-    { 
-      value: 'broken_water', 
-      label: t('reportIssue.form.issueType.brokenWater'), 
+    {
+      value: 'broken_water',
+      label: t('reportIssue.form.issueType.brokenWater'),
       icon: (
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 2c-1.1 0-2 .9-2 2v2H8a2 2 0 00-2 2v2h12V8a2 2 0 00-2-2h-2V4c0-1.1-.9-2-2-2zM6 12v6a2 2 0 002 2h8a2 2 0 002-2v-6H6z" />
         </svg>
       )
     },
-    { 
-      value: 'no_shade', 
+    {
+      value: 'no_shade',
       label: t('reportIssue.form.issueType.noShade'),
       icon: (
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l9-9 9 9M4 10v10a1 1 0 001 1h5v-5h4v5h5a1 1 0 001-1V10" />
         </svg>
       )
     },
-    { 
-      value: 'hot_pavement', 
+    {
+      value: 'hot_pavement',
       label: t('reportIssue.form.issueType.hotPavement'),
       icon: (
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -105,17 +105,17 @@ const ReportIssuePage = () => {
         </svg>
       )
     },
-    { 
-      value: 'cooling_center', 
+    {
+      value: 'cooling_center',
       label: t('reportIssue.form.issueType.coolingCenter'),
       icon: (
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 2v20m0-10l4.5-4.5M12 12l4.5 4.5M12 12L7.5 7.5M12 12l-4.5 4.5M2 12h20" />
         </svg>
       )
     },
-    { 
-      value: 'other', 
+    {
+      value: 'other',
       label: t('reportIssue.form.issueType.other'),
       icon: (
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -219,7 +219,7 @@ const ReportIssuePage = () => {
           note: 'Report submitted'
         }]
       };
-      
+
       // Save to Firestore
       const docRef = await addDoc(collection(db, "heatHazardReports"), reportData);
       console.log('Report submitted with ID:', docRef.id);
@@ -249,24 +249,23 @@ const ReportIssuePage = () => {
       <Navbar />
 
       <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold text-navy-900">{t('reportIssue.title')}</h1>
+        <div className="flex items-center justify mb-6">
           <Link
             to="/"
-            className="bg-white hover:bg-gray-100 text-navy-900 font-semibold py-2 px-4 rounded-lg border border-gray-300 transition duration-300 flex items-center"
+            className=" text-black font-semibold py-2 px-4 flex items-center"
           >
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
-            {t('nav.back')}
           </Link>
+          <h1 className="text-3xl font-bold text-navy-900">{t('reportIssue.title')}</h1>
         </div>
 
         {/* Introduction */}
         <div className="bg-gradient-to-r from-orange-500 to-amber-500 rounded-lg shadow-md p-6 mb-8">
           <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
             <div className="bg-white rounded-full p-4 hidden md:flex items-center justify-center">
-              <svg className="w-16 h-16 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <svg className="w-9 h-9 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
             </div>
@@ -297,7 +296,7 @@ const ReportIssuePage = () => {
               </button>
               <Link
                 to="/profile"
-                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-300"
+                className="bg-amber-600 hover:bg-amber-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-300"
               >
                 {t('reportIssue.viewMyReports')}
               </Link>
@@ -336,18 +335,16 @@ const ReportIssuePage = () => {
                   {issueTypes.map((type) => (
                     <div
                       key={type.value}
-                      className={`border rounded-lg p-4 flex flex-col items-center text-center cursor-pointer transition-colors ${
-                        formData.issueType === type.value
-                          ? 'bg-amber-50 border-amber-400 text-amber-800'
-                          : 'border-gray-200 hover:border-amber-300 hover:bg-amber-50/50'
-                      }`}
+                      className={`border rounded-lg p-4 flex flex-col items-center text-center cursor-pointer transition-colors ${formData.issueType === type.value
+                        ? 'bg-amber-50 border-amber-400 text-amber-800'
+                        : 'border-gray-200 hover:border-amber-300 hover:bg-amber-50/50'
+                        }`}
                       onClick={() => setFormData(prev => ({ ...prev, issueType: type.value }))}
                     >
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 transition-colors ${
-                        formData.issueType === type.value
-                          ? 'bg-amber-100 text-amber-700'
-                          : 'bg-gray-100 text-gray-600'
-                      }`}>
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 transition-colors ${formData.issueType === type.value
+                        ? 'bg-amber-100 text-amber-700'
+                        : 'bg-gray-100 text-gray-600'
+                        }`}>
                         {type.icon}
                       </div>
                       <span className="text-sm font-medium">{type.label}</span>
@@ -381,7 +378,7 @@ const ReportIssuePage = () => {
                       </svg>
                     </div>
                     {useCurrentLocation && !formData.location && (
-                      <div className="mt-2 text-blue-600 flex items-center">
+                      <div className="mt-2 text-amber-600 flex items-center">
                         <svg className="w-4 h-4 mr-1 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                         </svg>
@@ -392,7 +389,7 @@ const ReportIssuePage = () => {
                   <button
                     type="button"
                     onClick={handleLocationDetection}
-                    className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-5 rounded-lg flex items-center transition duration-300 whitespace-nowrap"
+                    className="bg-amber-600 hover:bg-amber-700 text-white font-medium py-3 px-5 rounded-lg flex items-center transition duration-300 whitespace-nowrap"
                   >
                     <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
@@ -439,15 +436,14 @@ const ReportIssuePage = () => {
                         onChange={handleChange}
                         className="sr-only"
                       />
-                      <div className={`w-6 h-6 rounded-full border-2 mr-3 flex items-center justify-center transition-colors ${
-                        formData.severity === severity
-                          ? severity === 'high' 
-                            ? 'border-red-500 bg-red-500' 
-                            : severity === 'medium'
+                      <div className={`w-6 h-6 rounded-full border-2 mr-3 flex items-center justify-center transition-colors ${formData.severity === severity
+                        ? severity === 'high'
+                          ? 'border-red-500 bg-red-500'
+                          : severity === 'medium'
                             ? 'border-amber-500 bg-amber-500'
                             : 'border-green-500 bg-green-500'
-                          : 'border-gray-300 group-hover:border-gray-400'
-                      }`}>
+                        : 'border-gray-300 group-hover:border-gray-400'
+                        }`}>
                         {formData.severity === severity && (
                           <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
@@ -455,13 +451,12 @@ const ReportIssuePage = () => {
                         )}
                       </div>
                       <div>
-                        <span className={`font-medium ${
-                          severity === 'high' 
-                            ? 'text-red-700' 
-                            : severity === 'medium'
+                        <span className={`font-medium ${severity === 'high'
+                          ? 'text-red-700'
+                          : severity === 'medium'
                             ? 'text-amber-700'
                             : 'text-green-700'
-                        }`}>
+                          }`}>
                           {t(`reportIssue.form.severity.${severity}`)}
                         </span>
                         {severity === 'high' && (
@@ -502,9 +497,8 @@ const ReportIssuePage = () => {
                 <button
                   type="submit"
                   disabled={submitting || !user}
-                  className={`w-full ${
-                    user ? 'bg-amber-600 hover:bg-amber-700' : 'bg-gray-400 cursor-not-allowed'
-                  } text-white font-semibold py-4 px-6 rounded-lg flex items-center justify-center text-lg transition duration-300`}
+                  className={`w-full ${user ? 'bg-amber-600 hover:bg-amber-700' : 'bg-gray-400 cursor-not-allowed'
+                    } text-white font-semibold py-4 px-6 rounded-lg flex items-center justify-center text-lg transition duration-300`}
                 >
                   {submitting ? (
                     <>
@@ -516,7 +510,7 @@ const ReportIssuePage = () => {
                     </>
                   ) : (
                     <>
-                        <svg className="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <svg className="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                       {t('reportIssue.form.submitButton')}
@@ -527,7 +521,7 @@ const ReportIssuePage = () => {
             </form>
           </div>
         )}
-        
+
         {/* Information Section */}
         {!submitted && (
           <div className="mt-8 bg-blue-50 rounded-lg shadow-md p-6 border border-blue-100">
@@ -537,7 +531,7 @@ const ReportIssuePage = () => {
               </svg>
               What Happens After You Report?
             </h2>
-            
+
             <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="bg-white p-5 rounded-lg shadow-sm">
                 <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4">
@@ -546,7 +540,7 @@ const ReportIssuePage = () => {
                 <h3 className="text-lg font-medium text-gray-800 mb-2">Verification</h3>
                 <p className="text-gray-600">Our team reviews your report to verify the issue and assess its severity.</p>
               </div>
-              
+
               <div className="bg-white p-5 rounded-lg shadow-sm">
                 <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4">
                   <span className="text-blue-700 font-bold text-xl">2</span>
@@ -554,7 +548,7 @@ const ReportIssuePage = () => {
                 <h3 className="text-lg font-medium text-gray-800 mb-2">Action</h3>
                 <p className="text-gray-600">The issue is forwarded to appropriate authorities or added to our heat safety map.</p>
               </div>
-              
+
               <div className="bg-white p-5 rounded-lg shadow-sm">
                 <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4">
                   <span className="text-blue-700 font-bold text-xl">3</span>
@@ -563,7 +557,7 @@ const ReportIssuePage = () => {
                 <p className="text-gray-600">You can track the status of your report in your profile, and we'll notify you of changes.</p>
               </div>
             </div>
-            
+
             <div className="mt-6 bg-white p-5 rounded-lg border border-blue-100">
               <h3 className="text-lg font-medium text-gray-800 mb-2 flex items-center">
                 <svg className="w-5 h-5 mr-2 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -577,7 +571,7 @@ const ReportIssuePage = () => {
             </div>
           </div>
         )}
-        
+
         {/* Common Issues Examples */}
         {!submitted && (
           <div className="mt-8">
@@ -587,28 +581,28 @@ const ReportIssuePage = () => {
                 <div className="h-3 bg-blue-500"></div>
                 <div className="p-5">
                   <div className="text-blue-500 mb-3">
-                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 2c-1.1 0-2 .9-2 2v2H8a2 2 0 00-2 2v2h12V8a2 2 0 00-2-2h-2V4c0-1.1-.9-2-2-2zM6 12v6a2 2 0 002 2h8a2 2 0 002-2v-6H6z" />
                     </svg>
                   </div>
                   <h3 className="text-lg font-medium text-gray-800 mb-2">Broken Water Fountain</h3>
                   <p className="text-gray-600 text-sm">Water fountains that are broken, contaminated, or not functioning properly during hot weather.</p>
                 </div>
               </div>
-              
+
               <div className="bg-white rounded-lg shadow-md overflow-hidden">
                 <div className="h-3 bg-amber-500"></div>
                 <div className="p-5">
                   <div className="text-amber-500 mb-3">
-                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l9-9 9 9M4 10v10a1 1 0 001 1h5v-5h4v5h5a1 1 0 001-1V10" />
                     </svg>
                   </div>
                   <h3 className="text-lg font-medium text-gray-800 mb-2">No Shade Available</h3>
                   <p className="text-gray-600 text-sm">Public areas, bus stops, or playgrounds with no shade structures, trees, or protection from direct sun.</p>
                 </div>
               </div>
-              
+
               <div className="bg-white rounded-lg shadow-md overflow-hidden">
                 <div className="h-3 bg-red-500"></div>
                 <div className="p-5">
@@ -622,13 +616,13 @@ const ReportIssuePage = () => {
                   <p className="text-gray-600 text-sm">Dangerously hot surfaces in public areas that could cause burns, especially to children or pets.</p>
                 </div>
               </div>
-              
+
               <div className="bg-white rounded-lg shadow-md overflow-hidden">
                 <div className="h-3 bg-purple-500"></div>
                 <div className="p-5">
                   <div className="text-purple-500 mb-3">
-                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 2v20m0-10l4.5-4.5M12 12l4.5 4.5M12 12L7.5 7.5M12 12l-4.5 4.5M2 12h20" />
                     </svg>
                   </div>
                   <h3 className="text-lg font-medium text-gray-800 mb-2">Cooling Center Issues</h3>

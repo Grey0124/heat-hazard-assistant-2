@@ -28,13 +28,13 @@ const AdminPanel = () => {
   useEffect(() => {
     const fetchReports = async () => {
       if (!isAdmin) return;
-      
+
       setLoading(true);
       try {
         const reportsRef = collection(db, "heatHazardReports");
         const q = query(reportsRef, orderBy("timestamp", "desc"));
         const querySnapshot = await getDocs(q);
-        
+
         const fetchedReports = [];
         querySnapshot.forEach((doc) => {
           fetchedReports.push({
@@ -43,7 +43,7 @@ const AdminPanel = () => {
             timestamp: doc.data().timestamp?.toDate() || new Date()
           });
         });
-        
+
         setReports(fetchedReports);
       } catch (err) {
         console.error("Error fetching reports:", err);
@@ -52,17 +52,17 @@ const AdminPanel = () => {
         setLoading(false);
       }
     };
-    
+
     fetchReports();
   }, [user, isAdmin]);
 
   const handleUpdateStatus = async () => {
     if (!selectedReport || !updateStatus) return;
-    
+
     setUpdatingStatus(true);
     try {
       const reportRef = doc(db, "heatHazardReports", selectedReport.id);
-      
+
       // Create status update object
       const statusUpdate = {
         status: updateStatus,
@@ -70,19 +70,19 @@ const AdminPanel = () => {
         updatedBy: user.uid,
         updaterName: user.displayName || user.email
       };
-      
+
       // Add note if provided
       if (statusNote.trim()) {
         statusUpdate.note = statusNote.trim();
       }
-      
+
       // Update the document
       await updateDoc(reportRef, {
         status: updateStatus,
         statusUpdates: arrayUnion(statusUpdate),
         lastUpdated: Timestamp.now()
       });
-      
+
       // Update local state
       setReports(prev => prev.map(report => {
         if (report.id === selectedReport.id) {
@@ -95,7 +95,7 @@ const AdminPanel = () => {
         }
         return report;
       }));
-      
+
       // Update selected report
       setSelectedReport(prev => ({
         ...prev,
@@ -106,10 +106,10 @@ const AdminPanel = () => {
         }],
         lastUpdated: new Date()
       }));
-      
+
       // Reset form
       setStatusNote("");
-      
+
     } catch (err) {
       console.error("Error updating status:", err);
       setError("Failed to update status. Please try again.");
@@ -176,7 +176,7 @@ const AdminPanel = () => {
   // Filter reports based on current filters
   const filteredReports = reports.filter(report => {
     return (statusFilter === 'all' || report.status === statusFilter) &&
-           (typeFilter === 'all' || report.issueType === typeFilter);
+      (typeFilter === 'all' || report.issueType === typeFilter);
   });
 
   if (!isAdmin) {
@@ -188,7 +188,7 @@ const AdminPanel = () => {
             <p className="font-bold">Access Restricted</p>
             <p>You do not have permission to access the admin panel.</p>
           </div>
-          <Link 
+          <Link
             to="/"
             className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg inline-block"
           >
@@ -202,30 +202,29 @@ const AdminPanel = () => {
   return (
     <div className="min-h-screen bg-amber-50">
       <Navbar />
-      
+
       <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold text-navy-900">Admin Panel</h1>
-          <Link 
+        <div className="flex items-center justify mb-6">
+          <Link
             to="/"
-            className="bg-white hover:bg-gray-100 text-navy-900 font-semibold py-2 px-4 rounded-lg border border-gray-300 transition duration-300 flex items-center"
+            className=" text-black font-semibold py-2 px-4 flex items-center"
           >
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
-            Back to Home
           </Link>
+          <h1 className="text-3xl font-bold text-navy-900">Admin Panel</h1>
         </div>
-        
+
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
             {error}
           </div>
         )}
-        
+
         <div className="bg-white rounded-lg shadow-md p-6 mb-8">
           <h2 className="text-xl font-semibold mb-4">Heat Hazard Reports</h2>
-          
+
           <div className="flex flex-wrap gap-4 mb-6">
             <div>
               <label htmlFor="statusFilter" className="block text-sm font-medium text-gray-700 mb-1">
@@ -245,7 +244,7 @@ const AdminPanel = () => {
                 <option value="closed">Closed</option>
               </select>
             </div>
-            
+
             <div>
               <label htmlFor="typeFilter" className="block text-sm font-medium text-gray-700 mb-1">
                 Filter by Type
@@ -265,7 +264,7 @@ const AdminPanel = () => {
               </select>
             </div>
           </div>
-          
+
           {loading ? (
             <div className="flex justify-center py-8">
               <svg className="animate-spin h-8 w-8 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -345,7 +344,7 @@ const AdminPanel = () => {
           )}
         </div>
       </div>
-      
+
       {/* Report Management Modal */}
       {selectedReport && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
@@ -353,7 +352,7 @@ const AdminPanel = () => {
             <div className="p-6">
               <div className="flex justify-between items-start">
                 <h3 className="text-xl font-bold text-gray-900">Manage Report</h3>
-                <button 
+                <button
                   onClick={() => setSelectedReport(null)}
                   className="text-gray-400 hover:text-gray-500"
                 >
@@ -362,12 +361,12 @@ const AdminPanel = () => {
                   </svg>
                 </button>
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                 {/* Report Details */}
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <h4 className="font-semibold text-gray-900 mb-4">Report Details</h4>
-                  
+
                   <div className="space-y-3">
                     <div>
                       <p className="text-sm font-medium text-gray-500">Report ID</p>
@@ -411,13 +410,13 @@ const AdminPanel = () => {
                     </div>
                   </div>
                 </div>
-                
+
                 {/* Status Management */}
                 <div>
                   <h4 className="font-semibold text-gray-900 mb-4">Update Status</h4>
-                  
+
                   <div className="space-y-4">
-                  <div>
+                    <div>
                       <label htmlFor="updateStatus" className="block text-sm font-medium text-gray-700 mb-1">
                         New Status
                       </label>
@@ -435,7 +434,7 @@ const AdminPanel = () => {
                         <option value="closed">Closed</option>
                       </select>
                     </div>
-                    
+
                     <div>
                       <label htmlFor="statusNote" className="block text-sm font-medium text-gray-700 mb-1">
                         Status Note (optional)
@@ -449,7 +448,7 @@ const AdminPanel = () => {
                         className="w-full border border-gray-300 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       ></textarea>
                     </div>
-                    
+
                     <button
                       onClick={handleUpdateStatus}
                       disabled={!updateStatus || updatingStatus}
@@ -468,11 +467,11 @@ const AdminPanel = () => {
                       )}
                     </button>
                   </div>
-                  
+
                   {/* Status History */}
                   <div className="mt-8">
                     <h4 className="font-semibold text-gray-900 mb-4">Status History</h4>
-                    
+
                     {selectedReport.statusUpdates && selectedReport.statusUpdates.length > 0 ? (
                       <div className="space-y-3">
                         {selectedReport.statusUpdates.map((update, index) => (
@@ -484,8 +483,8 @@ const AdminPanel = () => {
                                   Status changed to <span className="font-semibold">{getStatusLabel(update.status)}</span>
                                 </p>
                                 <p className="text-xs text-gray-500">
-                                  {update.timestamp?.toDate 
-                                    ? formatDate(update.timestamp.toDate()) 
+                                  {update.timestamp?.toDate
+                                    ? formatDate(update.timestamp.toDate())
                                     : formatDate(update.timestamp)
                                   } by {update.updaterName || 'Administrator'}
                                 </p>

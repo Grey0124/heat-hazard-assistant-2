@@ -31,12 +31,12 @@ const SafeRoutePlanner = () => {
   const mapRef = useRef(null);
   const sourceAutocompleteRef = useRef(null);
   const destAutocompleteRef = useRef(null);
-  
+
   // Google Maps API key - In production, you should store this in an environment variable
   const googleMapsApiKey = "AIzaSyD0pKwxjGQvmdWgTAMOUVb-qgqpoXTJ5P0";
   // OpenWeatherMap API key - For getting current weather conditions
   const weatherApiKey = "c7438fac71c1c9abdd58c30073620321";
-  
+
   useEffect(() => {
     // Initialize Google Maps
     const initMap = async () => {
@@ -46,7 +46,7 @@ const SafeRoutePlanner = () => {
           version: "weekly",
           libraries: GOOGLE_MAPS_LIBRARIES // Use the static array defined outside the component
         });
-        
+
         const google = await loader.load();
         const mapInstance = new google.maps.Map(mapRef.current, {
           center: { lat: 40.7128, lng: -74.0060 }, // Default to New York City
@@ -76,7 +76,7 @@ const SafeRoutePlanner = () => {
             }
           ]
         });
-        
+
         // Initialize DirectionsService and DirectionsRenderer
         const dirService = new google.maps.DirectionsService();
         const dirRenderer = new google.maps.DirectionsRenderer({
@@ -87,44 +87,44 @@ const SafeRoutePlanner = () => {
             strokeWeight: 5
           }
         });
-        
+
         // Initialize Autocomplete for source and destination inputs
         const sourceAutocomplete = new google.maps.places.Autocomplete(
           document.getElementById('source-input'),
           { types: ['geocode'] }
         );
-        
+
         const destAutocomplete = new google.maps.places.Autocomplete(
           document.getElementById('destination-input'),
           { types: ['geocode'] }
         );
-        
+
         sourceAutocomplete.addListener('place_changed', () => {
           const place = sourceAutocomplete.getPlace();
           setSource(place.formatted_address);
-          
+
           // If we already have a destination, calculate the route
           if (destination && place.formatted_address) {
             calculateRoute(place.formatted_address, destination);
           }
         });
-        
+
         destAutocomplete.addListener('place_changed', () => {
           const place = destAutocomplete.getPlace();
           setDestination(place.formatted_address);
-          
+
           // If we already have a source, calculate the route
           if (source && place.formatted_address) {
             calculateRoute(source, place.formatted_address);
           }
         });
-        
+
         setMap(mapInstance);
         setDirectionsService(dirService);
         setDirectionsRenderer(dirRenderer);
         sourceAutocompleteRef.current = sourceAutocomplete;
         destAutocompleteRef.current = destAutocomplete;
-        
+
         // Try to get user's current location
         if (navigator.geolocation) {
           navigator.geolocation.getCurrentPosition(
@@ -133,16 +133,16 @@ const SafeRoutePlanner = () => {
                 lat: position.coords.latitude,
                 lng: position.coords.longitude
               };
-              
+
               mapInstance.setCenter(pos);
-              
+
               // Reverse geocode to get address
               const geocoder = new google.maps.Geocoder();
               geocoder.geocode({ location: pos }, (results, status) => {
                 if (status === "OK" && results[0]) {
                   setSource(results[0].formatted_address);
                   document.getElementById('source-input').value = results[0].formatted_address;
-                  
+
                   // Fetch weather data for the current location
                   fetchWeatherData(position.coords.latitude, position.coords.longitude);
                 }
@@ -155,16 +155,16 @@ const SafeRoutePlanner = () => {
         } else {
           setError("Error: Your browser doesn't support geolocation.");
         }
-        
+
       } catch (err) {
         console.error("Error initializing map:", err);
         setError("Failed to load Google Maps. Please try again later.");
       }
     };
-    
+
     initMap();
   }, []);
-  
+
   // Function to fetch weather data
   const fetchWeatherData = async (lat, lng) => {
     try {
@@ -174,49 +174,49 @@ const SafeRoutePlanner = () => {
       );
       const data = response.data;
       setWeatherData(data);
-      
+
       // Calculate heat index
       const temp = data.main.temp;
       const humidity = data.main.humidity;
-      
+
       // Calculate heat index using the Celsius value
       const heatIndex = calculateHeatIndex(temp, humidity);
       setCurrentHeatIndex(heatIndex);
-      
+
       // Generate recommendations based on heat index
       generateRecommendations(heatIndex);
-      
+
     } catch (err) {
       console.error("Error fetching weather data:", err);
     }
   };
-  
+
   // Calculate heat index (modified to work with Celsius)
   const calculateHeatIndex = (temperature, relativeHumidity) => {
     // Convert Celsius to Fahrenheit for the formula
-    const tempF = (temperature * 9/5) + 32;
-    
+    const tempF = (temperature * 9 / 5) + 32;
+
     // Simple heat index calculation (Fahrenheit)
     if (tempF < 80) return tempF;
-    
+
     let heatIndex = 0.5 * (tempF + 61.0 + ((tempF - 68.0) * 1.2) + (relativeHumidity * 0.094));
-    
+
     if (heatIndex > 80) {
       heatIndex = -42.379 + 2.04901523 * tempF + 10.14333127 * relativeHumidity
         - 0.22475541 * tempF * relativeHumidity - 0.00683783 * tempF * tempF
         - 0.05481717 * relativeHumidity * relativeHumidity + 0.00122874 * tempF * tempF * relativeHumidity
         + 0.00085282 * tempF * relativeHumidity * relativeHumidity - 0.00000199 * tempF * tempF * relativeHumidity * relativeHumidity;
     }
-    
+
     return Math.round(heatIndex);
   };
-  
+
   // Generate recommendations based on heat index and selected route
   const generateRecommendations = async (heatIndex, selectedRouteData) => {
     // Start with fallback recommendations
     let routeType = 'direct';
     let duration = 30; // default 30 minutes
-    
+
     // If we have a selected route data provided, use it
     if (selectedRouteData) {
       routeType = selectedRouteData.shadeCoverage > 50 ? 'shaded' : 'direct';
@@ -236,16 +236,16 @@ const SafeRoutePlanner = () => {
         duration = parseInt(durationMatch[1], 10);
       }
     }
-    
+
     // Get fallback recommendations in case API call fails
     const fallbackRecs = OpenAIService.getFallbackRecommendations(heatIndex, routeType, duration);
     setRecommendations(fallbackRecs);
-    
+
     // Only call OpenAI API if we have enough data and a selected route
     if (weatherData && selectedRoute !== null && alternativeRoutes.length > 0) {
       try {
         setLoading(true);
-        
+
         // Prepare data for API
         const routeData = selectedRouteData || alternativeRoutes[selectedRoute];
         const userData = user ? {
@@ -253,7 +253,7 @@ const SafeRoutePlanner = () => {
           age: user.age || null,
           healthConditions: user.healthConditions || []
         } : null;
-        
+
         // Call OpenAI service
         const response = await OpenAIService.generateHeatSafetyRecommendations({
           user: userData,
@@ -266,7 +266,7 @@ const SafeRoutePlanner = () => {
           weather: weatherData,
           heatIndex
         });
-        
+
         if (response && response.recommendations && response.recommendations.length > 0) {
           setRecommendations(response.recommendations);
         }
@@ -278,14 +278,14 @@ const SafeRoutePlanner = () => {
       }
     }
   };
-  
+
   // Function to calculate route with alternatives
   const calculateRoute = (start, end) => {
     if (!directionsService || !directionsRenderer) return;
-    
+
     setLoading(true);
     setError('');
-    
+
     // Reset alternative routes
     setAlternativeRoutes([]);
 
@@ -298,7 +298,7 @@ const SafeRoutePlanner = () => {
         provideRouteAlternatives: true,
         unitSystem: google.maps.UnitSystem.METRIC
       };
-      
+
       directionsService.route(walkingRequest, (result, status) => {
         if (status === google.maps.DirectionsStatus.OK) {
           // Only set directions if walking mode is active
@@ -308,20 +308,20 @@ const SafeRoutePlanner = () => {
             directionsRenderer.setRouteIndex(0);
             setSelectedRoute(0);
           }
-          
+
           // Process walking route alternatives
           if (result.routes && result.routes.length > 0) {
             const routes = result.routes.map((route, index) => {
               // Extract key information about the route
               const distance = route.legs[0].distance.text;
               const duration = route.legs[0].duration.text;
-              
+
               // Your existing calculation for shade coverage
               const shadeCoverage = calculateSimulatedShadeCoverage(route);
-              
+
               // Your existing calculation for heat exposure risk
               const heatExposureRisk = calculateHeatExposureRisk(route, shadeCoverage);
-              
+
               return {
                 type: 'WALKING',
                 index,
@@ -333,7 +333,7 @@ const SafeRoutePlanner = () => {
                 route: route
               };
             });
-            
+
             setAlternativeRoutes(prevRoutes => [...prevRoutes, ...routes]);
           }
         } else {
@@ -344,7 +344,7 @@ const SafeRoutePlanner = () => {
         }
       });
     }
-    
+
     // Then, calculate the transit route if needed
     if (transitMode === 'TRANSIT' || transitMode === 'BOTH') {
       const transitRequest = {
@@ -358,10 +358,10 @@ const SafeRoutePlanner = () => {
         provideRouteAlternatives: true,
         unitSystem: google.maps.UnitSystem.METRIC
       };
-      
+
       directionsService.route(transitRequest, (result, status) => {
         setLoading(false);
-        
+
         if (status === google.maps.DirectionsStatus.OK) {
           // Only set directions if transit mode is active
           if (transitMode === 'TRANSIT') {
@@ -369,14 +369,14 @@ const SafeRoutePlanner = () => {
             directionsRenderer.setRouteIndex(0);
             setSelectedRoute(0);
           }
-          
+
           // Process transit route alternatives
           if (result.routes && result.routes.length > 0) {
             const routes = result.routes.map((route, index) => {
               // Extract key information about the route
               const distance = route.legs[0].distance.text;
               const duration = route.legs[0].duration.text;
-              
+
               // For transit routes, extract transit specific information
               const transitSteps = route.legs[0].steps.filter(step => step.travel_mode === 'TRANSIT');
               const transitDetails = transitSteps.map(step => {
@@ -395,20 +395,20 @@ const SafeRoutePlanner = () => {
                   headsign: step.transit?.headsign || ''
                 };
               });
-              
+
               // Heat exposure risk is lower for transit routes
               // Buses have moderate shade, metro has full shade
-              const hasMetro = transitSteps.some(step => 
-                step.transit?.line?.vehicle?.type === 'SUBWAY' || 
+              const hasMetro = transitSteps.some(step =>
+                step.transit?.line?.vehicle?.type === 'SUBWAY' ||
                 step.transit?.line?.vehicle?.type === 'RAIL'
               );
-              
+
               const transportType = hasMetro ? 'METRO' : 'BUS';
               // Assign high shade coverage to metro, moderate to bus
               const shadeCoverage = hasMetro ? 90 : 70;
               // Heat risk is generally lower for transit
               const heatExposureRisk = hasMetro ? "Low" : "Moderate";
-              
+
               return {
                 type: 'TRANSIT',
                 transitType: transportType,
@@ -422,7 +422,7 @@ const SafeRoutePlanner = () => {
                 route: route
               };
             });
-            
+
             setAlternativeRoutes(prevRoutes => [...prevRoutes, ...routes]);
           }
         } else {
@@ -433,7 +433,7 @@ const SafeRoutePlanner = () => {
       });
     }
   };
-  
+
   // This function would ideally use real GIS data for tree canopy and building shadow coverage
   // For this prototype, we'll use a more sophisticated simulation that considers route factors
   const calculateSimulatedShadeCoverage = (route) => {
@@ -442,40 +442,40 @@ const SafeRoutePlanner = () => {
     // 2. Calculate sun position based on time of day
     // 3. Use building height data to estimate shadows
     // 4. Use satellite imagery analysis for vegetation coverage
-    
+
     let baseShadeCoverage = 35; // Base value for an average urban area
-    
+
     // Analyze route characteristics from Google's data
     if (route.legs && route.legs.length > 0) {
       const steps = route.legs[0].steps;
-      
+
       // Look through steps for indicators of parks, tree-lined streets, etc.
       for (const step of steps) {
         const instructions = step.instructions.toLowerCase();
-        
+
         // Increase shade score for parks and green areas
         if (instructions.includes('park') || instructions.includes('garden') || instructions.includes('trail')) {
           baseShadeCoverage += 15;
         }
-        
+
         // Decrease for major roads which tend to have less shade
-        if (instructions.includes('highway') || instructions.includes('major') || 
-            instructions.includes('avenue') || instructions.includes('boulevard')) {
+        if (instructions.includes('highway') || instructions.includes('major') ||
+          instructions.includes('avenue') || instructions.includes('boulevard')) {
           baseShadeCoverage -= 10;
         }
-        
+
         // Increase for residential areas which often have more trees
         if (instructions.includes('residential') || instructions.includes('neighborhood')) {
           baseShadeCoverage += 8;
         }
-        
+
         // Downtown areas often have tall buildings (good for shadow, but less trees)
         if (instructions.includes('downtown') || instructions.includes('center')) {
           baseShadeCoverage += 5;
         }
       }
     }
-    
+
     // Apply time-of-day factors - afternoon sun is strongest
     const currentHour = new Date().getHours();
     if (currentHour >= 10 && currentHour <= 14) {
@@ -483,25 +483,25 @@ const SafeRoutePlanner = () => {
     } else if (currentHour < 8 || currentHour > 18) {
       baseShadeCoverage += 20; // More effective shade during early morning/evening
     }
-    
+
     // Ensure the final value is within reasonable bounds
     baseShadeCoverage = Math.max(5, Math.min(90, baseShadeCoverage));
-    
+
     return Math.round(baseShadeCoverage);
   };
-  
+
   // Calculate heat exposure risk based on route and shade coverage
   const calculateHeatExposureRisk = (route, shadeCoverage) => {
     // This is a simplified risk assessment
     // In a real app, you would factor in current temperature, humidity, UV index,
     // walking duration, shade, and potentially user health factors
-    
+
     const distance = route.legs[0].distance.value; // Distance in meters
     const duration = route.legs[0].duration.value; // Duration in seconds
-    
+
     // Risk increases with distance and decreases with shade
     let risk = (distance / 1000) * (1 - (shadeCoverage / 100));
-    
+
     // Adjust risk based on current heat index if available
     if (currentHeatIndex) {
       if (currentHeatIndex >= 105) {
@@ -512,14 +512,14 @@ const SafeRoutePlanner = () => {
         risk *= 1.5;
       }
     }
-    
+
     // Categorize risk
     if (risk < 0.5) return "Low";
     if (risk < 1.5) return "Moderate";
     if (risk < 3) return "High";
     return "Very High";
   };
-  
+
   // Handle form submission
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -527,20 +527,20 @@ const SafeRoutePlanner = () => {
       calculateRoute(source, destination);
     }
   };
-  
+
   // Select a route and display it
   const selectRoute = (index) => {
     setSelectedRoute(index);
-  
+
     if (directionsRenderer && alternativeRoutes[index]) {
-      directionsRenderer.setDirections({routes: [alternativeRoutes[index].route]});
+      directionsRenderer.setDirections({ routes: [alternativeRoutes[index].route] });
       directionsRenderer.setRouteIndex(0);
-      
+
       // Generate recommendations based on selected route
       generateRecommendations(currentHeatIndex, alternativeRoutes[index]);
     }
   };
-  
+
   // Get heat risk color for UI elements
   const getHeatRiskColor = (risk) => {
     switch (risk) {
@@ -559,27 +559,26 @@ const SafeRoutePlanner = () => {
   return (
     <div className="min-h-screen bg-amber-50">
       <Navbar />
-      
+
       <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold text-navy-900">Heat-Safe Route Planner</h1>
-          <Link 
+        <div className="flex items-center justify mb-6">
+          <Link
             to="/"
-            className="bg-white hover:bg-gray-100 text-navy-900 font-semibold py-2 px-4 rounded-lg border border-gray-300 transition duration-300 flex items-center"
+            className=" text-black font-semibold py-2 px-4 flex items-center"
           >
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
-            Back to Home
           </Link>
+          <h1 className="text-3xl font-bold text-navy-900">Heat-Safe Route Planner</h1>
         </div>
-        
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column - Route Input and Weather Info */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+            <div className="bg-white rounded-lg shadow-md p-11 mb-6">
               <h2 className="text-xl font-semibold mb-4">Plan Your Route</h2>
-              
+
               <form onSubmit={handleSubmit}>
                 <div className="mb-4">
                   <label htmlFor="source-input" className="block text-sm font-medium text-gray-700 mb-1">
@@ -595,7 +594,7 @@ const SafeRoutePlanner = () => {
                     required
                   />
                 </div>
-                
+
                 <div className="mb-4">
                   <label htmlFor="destination-input" className="block text-sm font-medium text-gray-700 mb-1">
                     Destination
@@ -610,7 +609,7 @@ const SafeRoutePlanner = () => {
                     required
                   />
                 </div>
-                  
+
                 {/* Transit Mode Selector */}
                 <div className="mb-6">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -620,42 +619,39 @@ const SafeRoutePlanner = () => {
                     <button
                       type="button"
                       onClick={() => setTransitMode('WALKING')}
-                      className={`flex-1 py-2 px-3 rounded-lg flex items-center justify-center ${
-                        transitMode === 'WALKING'
+                      className={`flex-1 py-2 px-3 rounded-lg flex items-center justify-center ${transitMode === 'WALKING'
                           ? 'bg-amber-100 border-2 border-amber-500 text-amber-700'
                           : 'bg-gray-100 border border-gray-300 text-gray-700 hover:bg-gray-200'
-                      }`}
+                        }`}
                     >
                       <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                        <path d="M13 4v16M7 4v16M17 4v16"/>
+                        <path d="M13 4v16M7 4v16M17 4v16" />
                       </svg>
                       Walking Routes
                     </button>
                     <button
                       type="button"
                       onClick={() => setTransitMode('TRANSIT')}
-                      className={`flex-1 py-2 px-3 rounded-lg flex items-center justify-center ${
-                        transitMode === 'TRANSIT'
+                      className={`flex-1 py-2 px-3 rounded-lg flex items-center justify-center ${transitMode === 'TRANSIT'
                           ? 'bg-blue-100 border-2 border-blue-500 text-blue-700'
                           : 'bg-gray-100 border border-gray-300 text-gray-700 hover:bg-gray-200'
-                      }`}
+                        }`}
                     >
                       <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M4 16v4.2a.8.8 0 0 0 .8.8h14.4a.8.8 0 0 0 .8-.8V16M4 12v-1.2a.8.8 0 0 1 .8-.8h14.4a.8.8 0 0 1 .8.8V12M2 12h20M10 16v4M14 16v4M10 2v10M14 2v10"/>
+                        <path d="M4 16v4.2a.8.8 0 0 0 .8.8h14.4a.8.8 0 0 0 .8-.8V16M4 12v-1.2a.8.8 0 0 1 .8-.8h14.4a.8.8 0 0 1 .8.8V12M2 12h20M10 16v4M14 16v4M10 2v10M14 2v10" />
                       </svg>
                       Metro/Bus Routes
                     </button>
                   </div>
                 </div>
-                
+
                 <button
                   type="submit"
                   disabled={loading || !source || !destination}
-                  className={`w-full ${
-                    !loading && source && destination
+                  className={`w-full ${!loading && source && destination
                       ? 'bg-yellow-600 hover:bg-yellow-700'
                       : 'bg-gray-300 cursor-not-allowed'
-                  } text-white font-semibold py-2 px-4 rounded-lg flex items-center justify-center`}
+                    } text-white font-semibold py-2 px-4 rounded-lg flex items-center justify-center`}
                 >
                   {loading ? (
                     <>
@@ -671,14 +667,14 @@ const SafeRoutePlanner = () => {
                 </button>
               </form>
             </div>
-            
+
             {/* Current Weather Information */}
             {weatherData && (
               <div className="bg-white rounded-lg shadow-md p-6 mb-6">
                 <h2 className="text-xl font-semibold mb-4">{t ? t('safeRoute.currentConditions.title') : 'Current Conditions'}</h2>
-                
+
                 <div className="flex items-center mb-4">
-                  <img 
+                  <img
                     src={`https://openweathermap.org/img/wn/${weatherData.weather[0].icon}@2x.png`}
                     alt={weatherData.weather[0].description}
                     className="w-16 h-16 mr-2"
@@ -688,7 +684,7 @@ const SafeRoutePlanner = () => {
                     <p className="text-gray-600 capitalize">{weatherData.weather[0].description}</p>
                   </div>
                 </div>
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-gray-500">{t ? t('safeRoute.currentConditions.feelsLike') : 'Feels Like'}</p>
@@ -707,59 +703,57 @@ const SafeRoutePlanner = () => {
                     <p className="font-medium">{currentHeatIndex ? Math.round(currentHeatIndex) : "N/A"}°C</p>
                   </div>
                 </div>
-                
+
                 {currentHeatIndex && (
-                  <div className={`mt-4 p-3 rounded-lg border ${
-                    currentHeatIndex >= 105
+                  <div className={`mt-4 p-3 rounded-lg border ${currentHeatIndex >= 105
                       ? 'bg-red-100 border-red-300 text-red-800'
                       : currentHeatIndex >= 90
-                      ? 'bg-orange-100 border-orange-300 text-orange-800'
-                      : currentHeatIndex >= 80
-                      ? 'bg-yellow-100 border-yellow-300 text-yellow-800'
-                      : 'bg-green-100 border-green-300 text-green-800'
-                  }`}>
+                        ? 'bg-orange-100 border-orange-300 text-orange-800'
+                        : currentHeatIndex >= 80
+                          ? 'bg-yellow-100 border-yellow-300 text-yellow-800'
+                          : 'bg-green-100 border-green-300 text-green-800'
+                    }`}>
                     <p className="font-medium">
                       {currentHeatIndex >= 105
                         ? t ? t('safeRoute.currentConditions.danger') : 'Danger: Extreme heat conditions'
                         : currentHeatIndex >= 90
-                        ? t ? t('safeRoute.currentConditions.warning') : 'Warning: High heat risk'
-                        : currentHeatIndex >= 80
-                        ? t ? t('safeRoute.currentConditions.caution') : 'Caution: Moderate heat risk'
-                        : t ? t('safeRoute.currentConditions.low') : 'Low heat risk'}
+                          ? t ? t('safeRoute.currentConditions.warning') : 'Warning: High heat risk'
+                          : currentHeatIndex >= 80
+                            ? t ? t('safeRoute.currentConditions.caution') : 'Caution: Moderate heat risk'
+                            : t ? t('safeRoute.currentConditions.low') : 'Low heat risk'}
                     </p>
                   </div>
                 )}
               </div>
             )}
-            
+
             {/* Heat Safety Recommendations */}
             {recommendations.length > 0 && (
               <div className="bg-white rounded-lg shadow-md p-6">
                 <h2 className="text-xl font-semibold mb-4">{t ? t('safeRoute.tips.title') : 'Heat Safety Tips'}</h2>
-                
+
                 {/* Heat Risk Level Indicator */}
                 {currentHeatIndex && (
-                  <div className={`mb-4 p-3 rounded-lg border ${
-                    currentHeatIndex >= 105
+                  <div className={`mb-4 p-3 rounded-lg border ${currentHeatIndex >= 105
                       ? 'bg-red-100 border-red-300 text-red-800'
                       : currentHeatIndex >= 90
-                      ? 'bg-orange-100 border-orange-300 text-orange-800'
-                      : currentHeatIndex >= 80
-                      ? 'bg-yellow-100 border-yellow-300 text-yellow-800'
-                      : 'bg-green-100 border-green-300 text-green-800'
-                  }`}>
+                        ? 'bg-orange-100 border-orange-300 text-orange-800'
+                        : currentHeatIndex >= 80
+                          ? 'bg-yellow-100 border-yellow-300 text-yellow-800'
+                          : 'bg-green-100 border-green-300 text-green-800'
+                    }`}>
                     <p className="font-medium text-center">
                       {currentHeatIndex >= 105
                         ? t ? t('safeRoute.currentConditions.danger') : 'Danger: Extreme heat conditions'
                         : currentHeatIndex >= 90
-                        ? t ? t('safeRoute.currentConditions.warning') : 'Warning: High heat risk'
-                        : currentHeatIndex >= 80
-                        ? t ? t('safeRoute.currentConditions.caution') : 'Caution: Moderate heat risk'
-                        : t ? t('safeRoute.currentConditions.low') : 'Low heat risk'}
+                          ? t ? t('safeRoute.currentConditions.warning') : 'Warning: High heat risk'
+                          : currentHeatIndex >= 80
+                            ? t ? t('safeRoute.currentConditions.caution') : 'Caution: Moderate heat risk'
+                            : t ? t('safeRoute.currentConditions.low') : 'Low heat risk'}
                     </p>
                   </div>
                 )}
-                
+
                 {/* Organized Tips List */}
                 <div className="grid grid-cols-1 gap-3">
                   {recommendations.map((tip, index) => (
@@ -781,7 +775,7 @@ const SafeRoutePlanner = () => {
                     </div>
                   ))}
                 </div>
-                
+
                 {/* Transit-specific tip for transit routes */}
                 {selectedRoute !== null && alternativeRoutes[selectedRoute]?.type === 'TRANSIT' && (
                   <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
@@ -793,7 +787,7 @@ const SafeRoutePlanner = () => {
               </div>
             )}
           </div>
-          
+
           {/* Right Column - Map and Routes */}
           <div className="lg:col-span-2">
             {/* Map Container */}
@@ -804,27 +798,26 @@ const SafeRoutePlanner = () => {
                 style={{ minHeight: "400px" }}
               ></div>
             </div>
-            
+
             {/* Route Alternatives */}
             {alternativeRoutes.length > 0 && (
               <div className="bg-white rounded-lg shadow-md p-6">
                 <h2 className="text-xl font-semibold mb-4">{t ? t('safeRoute.routes.title') : 'Available Routes'}</h2>
-                
+
                 {error && (
                   <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
                     {error}
                   </div>
                 )}
-                
+
                 <div className="space-y-4">
                   {alternativeRoutes.map((route, index) => (
-                    <div 
+                    <div
                       key={index}
-                      className={`border rounded-lg p-4 cursor-pointer transition-colors ${
-                        selectedRoute === index 
-                          ? 'border-blue-500 bg-blue-50' 
+                      className={`border rounded-lg p-4 cursor-pointer transition-colors ${selectedRoute === index
+                          ? 'border-blue-500 bg-blue-50'
                           : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50/50'
-                      }`}
+                        }`}
                       onClick={() => selectRoute(index)}
                     >
                       {/* Route header with type icon */}
@@ -834,11 +827,11 @@ const SafeRoutePlanner = () => {
                             <span className="flex items-center mr-2">
                               {route.transitType === 'METRO' ? (
                                 <svg className="w-5 h-5 mr-1 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-                                  <path d="M4 16v4.2a.8.8 0 0 0 .8.8h14.4a.8.8 0 0 0 .8-.8V16M4 12v-1.2a.8.8 0 0 1 .8-.8h14.4a.8.8 0 0 1 .8.8V12M2 12h20M10 16v4M14 16v4M10 2v10M14 2v10"/>
+                                  <path d="M4 16v4.2a.8.8 0 0 0 .8.8h14.4a.8.8 0 0 0 .8-.8V16M4 12v-1.2a.8.8 0 0 1 .8-.8h14.4a.8.8 0 0 1 .8.8V12M2 12h20M10 16v4M14 16v4M10 2v10M14 2v10" />
                                 </svg>
                               ) : (
                                 <svg className="w-5 h-5 mr-1 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-                                  <path d="M8 7h12m0 0l-4-4m4 4l-4 4M4 17h12m0 0l-4-4m4 4l-4 4"/>
+                                  <path d="M8 7h12m0 0l-4-4m4 4l-4 4M4 17h12m0 0l-4-4m4 4l-4 4" />
                                 </svg>
                               )}
                               {route.transitType}
@@ -850,7 +843,7 @@ const SafeRoutePlanner = () => {
                           {t ? t('safeRoute.routes.heatRisk') : 'Heat Risk'}: {route.heatExposureRisk}
                         </span>
                       </div>
-                      
+
                       {/* Route details grid */}
                       <div className="grid grid-cols-3 gap-2 mb-2">
                         <div>
@@ -868,7 +861,7 @@ const SafeRoutePlanner = () => {
                           </p>
                         </div>
                       </div>
-                      
+
                       {/* Route details when selected */}
                       {selectedRoute === index && (
                         <div className="mt-3 pt-3 border-t border-gray-200">
@@ -878,7 +871,7 @@ const SafeRoutePlanner = () => {
                               // Transit route details
                               route.transitDetails.map((transit, transitIndex) => (
                                 <li key={transitIndex} className="flex items-start mb-3">
-                                  <div 
+                                  <div
                                     className="w-6 h-6 rounded-full flex items-center justify-center mr-2 mt-0.5 text-white text-xs"
                                     style={{ backgroundColor: transit.color || '#1976D2' }}
                                   >
@@ -925,5 +918,6 @@ const SafeRoutePlanner = () => {
         </div>
       </div>
     </div>
-  )}
-  export default SafeRoutePlanner;
+  )
+}
+export default SafeRoutePlanner;
