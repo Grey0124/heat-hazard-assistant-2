@@ -1,4 +1,4 @@
-// server.js - Simple Express backend for OpenAI integration
+// server.js - Updated with chatbot routes
 const express = require('express');
 const cors = require('cors');
 const { OpenAI } = require('openai');
@@ -6,6 +6,9 @@ require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// Import routes
+const chatbotRoutes = require('./server/chatbotRoutes');
 
 // Middleware
 app.use(cors());
@@ -61,6 +64,9 @@ app.post('/api/openai/recommendations', async (req, res) => {
     });
   }
 });
+
+// Use chatbot routes
+app.use('/api/openai', chatbotRoutes);
 
 // Helper function to construct the prompt for OpenAI
 function constructPrompt(user, route, weather, heatIndex) {
@@ -121,9 +127,3 @@ function processOpenAIResponse(responseText) {
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
-
-// Example .env file contents:
-/*
-PORT=5000
-OPENAI_API_KEY=your_openai_api_key_here
-*/
