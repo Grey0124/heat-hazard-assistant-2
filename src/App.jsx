@@ -11,6 +11,7 @@ import { useAuth } from './contexts/AuthContext';
 import AdminPanel from './pages/AdminPanel';
 import SafeRoutePlanner from './components/map/SafeRoutePlanner';
 import ChatbotComponent from './components/chatbot/ChatbotComponent';
+import MitigationPlannerPage from './pages/MitigationPlannerPage';
 
 function App() {
   const { user, loading } = useAuth();
@@ -34,6 +35,7 @@ function App() {
         <Route path="*" element={<NotFoundPage />} />
         <Route path="/admin" element={<AdminPanel />} />
         <Route path="/safe-route" element={<SafeRoutePlanner />} />
+        <Route path="/mitigation-planner" element={<MitigationPlannerPage />} />
       </Routes>
       
       {/* ChatbotComponent will appear on all pages */}

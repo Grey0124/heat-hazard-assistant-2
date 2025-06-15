@@ -50,6 +50,9 @@ const Navbar = () => {
               <Link to="/safe-route" className="text-black hover:text-amber-600 font-medium">
                 {t('home.cta.findRoutes')}
               </Link>
+              <Link to="/mitigation-planner" className="text-black hover:text-amber-600 font-medium">
+                {t('nav.mitigationPlanner')}
+              </Link>
               <Link to="/tips" className="text-black hover:text-amber-600 font-medium">
                 {t('nav.tips')}
               </Link>
@@ -78,7 +81,6 @@ const Navbar = () => {
             </div>
           )}
 
-
           {/* Mobile menu button */}
           <div className="md:hidden flex items-center space-x-4">
             <LanguageSelector />
@@ -98,7 +100,7 @@ const Navbar = () => {
         </div>
 
         {/* Mobile Menu */}
-        {isMenuOpen && user(
+        {isMenuOpen && user && (
           <div className="md:hidden mt-4 bg-white shadow-lg rounded-lg p-4">
             <div className="flex flex-col space-y-3">
               <Link
@@ -107,6 +109,20 @@ const Navbar = () => {
                 onClick={() => setIsMenuOpen(false)}
               >
                 {t('nav.heatMap')}
+              </Link>
+              <Link
+                to="/safe-route"
+                className="text-black hover:text-amber-600 font-medium p-2"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                {t('home.cta.findRoutes')}
+              </Link>
+              <Link
+                to="/mitigation-planner"
+                className="text-black hover:text-amber-600 font-medium p-2"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                {t('nav.mitigationPlanner')}
               </Link>
               <Link
                 to="/tips"

@@ -10,7 +10,8 @@
       "reportIssue": "Report Issue",
       "profile": "Profile",
       "admin": "Admin Panel",
-      "back": "Back to Home"
+      "back": "Back to Home",
+      "mitigationPlanner": "Mitigation Planner"
     },
     "home": {
       "hero": {
