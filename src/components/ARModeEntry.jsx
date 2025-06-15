@@ -29,7 +29,7 @@ const ARModeEntry = () => {
   }, []);
 
   const handleEnterAR = () => {
-    navigate('/ar-mode');
+    navigate('/ar-scene');
   };
 
   if (isChecking) {

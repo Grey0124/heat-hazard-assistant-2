@@ -13,6 +13,7 @@ import SafeRoutePlanner from './components/map/SafeRoutePlanner';
 import ChatbotComponent from './components/chatbot/ChatbotComponent';
 import MitigationPlannerPage from './pages/MitigationPlannerPage';
 import ARModeEntry from './components/ARModeEntry';
+import ARMode from './pages/ar-mode';
 
 function App() {
   const { user, loading } = useAuth();
@@ -38,6 +39,7 @@ function App() {
         <Route path="/safe-route" element={<SafeRoutePlanner />} />
         <Route path="/mitigation-planner" element={<MitigationPlannerPage />} />
         <Route path="/ar-mode" element={<ARModeEntry />} />
+        <Route path="/ar-scene" element={<ARMode />} />
       </Routes>
       
       {/* ChatbotComponent will appear on all pages */}
