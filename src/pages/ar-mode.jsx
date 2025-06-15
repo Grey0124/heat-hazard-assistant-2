@@ -105,8 +105,8 @@ export default function ARMode() {
           <XR
             onError={handleSessionError}
             sessionInit={{
-              requiredFeatures: ['hit-test'],
-              optionalFeatures: ['dom-overlay'],
+              requiredFeatures: ['hit-test', 'dom-overlay'],
+              optionalFeatures: ['light-estimation', 'anchors'],
               domOverlay: { root: document.body },
             }}
           >
@@ -119,7 +119,7 @@ export default function ARMode() {
           <p className="text-gray-600 whitespace-pre-line">
             {t(
               'ar.instructionsText',
-              '1. Tap AR button to start\n2. Point camera at a flat surface\n3. Tap reticle to place intervention\n4. Use buttons below to switch types'
+              '1. Tap AR button to start\n2. Allow camera access when prompted\n3. Point camera at a flat surface\n4. Tap reticle to place intervention\n5. Use buttons below to switch types'
             )}
           </p>
         </div>
