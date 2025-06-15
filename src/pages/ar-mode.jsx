@@ -44,11 +44,16 @@ function Reticle({ onSelect, selectedType, setInterventions }) {
   React.useEffect(() => {
     if (!session) return;
 
+    // Request reference space and hit test source
     session.requestReferenceSpace('viewer').then((space) => {
       viewerSpaceRef.current = space;
       session.requestHitTestSource({ space }).then((source) => {
         hitTestSourceRef.current = source;
+      }).catch(err => {
+        console.error('Error getting hit test source:', err);
       });
+    }).catch(err => {
+      console.error('Error getting reference space:', err);
     });
 
     return () => {
@@ -83,6 +88,7 @@ function Reticle({ onSelect, selectedType, setInterventions }) {
 
 function ARScene({ selectedType }) {
   const [interventions, setInterventions] = useState([]);
+  const { isPresenting, isSupported } = useXR();
 
   const renderIntervention = (int) => {
     const pos = int.position;
@@ -123,7 +129,6 @@ function ARScene({ selectedType }) {
     <>
       <ambientLight intensity={1} />
       <pointLight position={[10, 10, 10]} />
-
       {interventions.map(renderIntervention)}
       <Reticle selectedType={selectedType} setInterventions={setInterventions} />
     </>
@@ -134,27 +139,45 @@ export default function ARMode() {
   const { t } = useTranslation();
   const [selectedType, setSelectedType] = useState('tree');
   const [isARSupported, setIsARSupported] = useState(true);
+  const [error, setError] = useState(null);
 
   React.useEffect(() => {
+    // Check if WebXR is supported
     if (navigator.xr) {
       navigator.xr.isSessionSupported('immersive-ar').then((supported) => {
         setIsARSupported(supported);
+        if (!supported) {
+          setError('AR is not supported on your device');
+        }
+      }).catch(err => {
+        console.error('Error checking AR support:', err);
+        setError('Error checking AR support');
       });
     } else {
       setIsARSupported(false);
+      setError('WebXR is not supported in your browser');
     }
   }, []);
 
-  if (!isARSupported) {
+  const handleSessionError = (error) => {
+    console.error('AR Session Error:', error);
+    setError('Failed to start AR session. Please try again.');
+  };
+
+  if (error) {
     return (
       <div className="h-screen flex flex-col">
         <Navbar />
         <div className="flex-1 flex items-center justify-center">
           <div className="bg-white/90 p-6 rounded-lg shadow-lg text-center">
-            <h3 className="text-lg font-semibold mb-2">AR Not Supported</h3>
-            <p className="text-gray-600">
-              Your device or browser does not support AR features. Please try using a different device or browser.
-            </p>
+            <h3 className="text-lg font-semibold mb-2">AR Error</h3>
+            <p className="text-gray-600 mb-4">{error}</p>
+            <button 
+              onClick={() => window.location.reload()} 
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              Retry
+            </button>
           </div>
         </div>
       </div>
@@ -167,6 +190,7 @@ export default function ARMode() {
       <div className="flex-1 relative">
         <Canvas>
           <XR
+            onError={handleSessionError}
             sessionInit={{
               requiredFeatures: ['hit-test'],
               optionalFeatures: ['dom-overlay'],
