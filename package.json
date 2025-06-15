@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "postinstall": "patch-package"
   },
   "dependencies": {
     "@react-google-maps/api": "^2.20.6",
@@ -24,13 +25,16 @@
     "react-i18next": "^13.0.0",
     "react-router-dom": "^6.30.0",
     "recharts": "^2.15.3",
-    "three": "^0.177.0"
+    "three": "^0.177.0",
+    "zustand": "^3.7.2"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.4",
     "@vitejs/plugin-react": "^4.2.0",
     "autoprefixer": "^10.4.16",
+    "patch-package": "^8.0.0",
     "postcss": "^8.4.31",
+    "postinstall-postinstall": "^2.1.0",
     "tailwindcss": "^3.3.5",
     "vite": "^4.5.0"
   }
