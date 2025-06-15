@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@react-google-maps/api": "^2.20.6",
-    "@react-three/drei": "^10.2.0",
+    "@react-three/drei": "^9.56.14",
     "@react-three/fiber": "^8.18.0",
     "@react-three/xr": "^6.6.17",
     "@turf/turf": "^7.2.0",
