@@ -5,6 +5,7 @@ import Navbar from '../components/Navbar';
 import { computeCoolingEffect } from '../utils/coolingCalculator';
 import * as turf from '@turf/turf';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { Link } from 'react-router-dom';
 
 const containerStyle = {
   width: '100%',
@@ -280,6 +281,19 @@ const MitigationPlannerPage = () => {
                 {coolingEffect.toFixed(2)}°C
               </div>
             </div>
+          </div>
+
+          {/* AR Mode Link */}
+          <div className="mt-4">
+            <Link
+              to="/ar-mode"
+              className="inline-flex items-center px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-lg transition duration-300"
+            >
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+              {t('mitigationPlanner.tryAR', 'Try AR Mode')}
+            </Link>
           </div>
 
           {/* Additional controls for radius and coefficients */}

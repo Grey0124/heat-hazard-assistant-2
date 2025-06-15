@@ -12,6 +12,7 @@ import AdminPanel from './pages/AdminPanel';
 import SafeRoutePlanner from './components/map/SafeRoutePlanner';
 import ChatbotComponent from './components/chatbot/ChatbotComponent';
 import MitigationPlannerPage from './pages/MitigationPlannerPage';
+import ARModeEntry from './components/ARModeEntry';
 
 function App() {
   const { user, loading } = useAuth();
@@ -36,6 +37,7 @@ function App() {
         <Route path="/admin" element={<AdminPanel />} />
         <Route path="/safe-route" element={<SafeRoutePlanner />} />
         <Route path="/mitigation-planner" element={<MitigationPlannerPage />} />
+        <Route path="/ar-mode" element={<ARModeEntry />} />
       </Routes>
       
       {/* ChatbotComponent will appear on all pages */}
