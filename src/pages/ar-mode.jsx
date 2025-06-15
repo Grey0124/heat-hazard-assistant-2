@@ -133,6 +133,33 @@ function ARScene({ selectedType }) {
 export default function ARMode() {
   const { t } = useTranslation();
   const [selectedType, setSelectedType] = useState('tree');
+  const [isARSupported, setIsARSupported] = useState(true);
+
+  React.useEffect(() => {
+    if (navigator.xr) {
+      navigator.xr.isSessionSupported('immersive-ar').then((supported) => {
+        setIsARSupported(supported);
+      });
+    } else {
+      setIsARSupported(false);
+    }
+  }, []);
+
+  if (!isARSupported) {
+    return (
+      <div className="h-screen flex flex-col">
+        <Navbar />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="bg-white/90 p-6 rounded-lg shadow-lg text-center">
+            <h3 className="text-lg font-semibold mb-2">AR Not Supported</h3>
+            <p className="text-gray-600">
+              Your device or browser does not support AR features. Please try using a different device or browser.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen flex flex-col">
