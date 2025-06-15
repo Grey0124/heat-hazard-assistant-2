@@ -12,21 +12,15 @@ function Reticle({ onSelect, selectedType, setInterventions }) {
   const { session } = useXR();
   const [visible, setVisible] = useState(false);
 
-  useFrame((_, delta) => {
-    if (!session) return;
+  useFrame((state, delta) => {
+    const frame = state.gl.xr.getFrame();
+    if (!frame || !hitTestSourceRef.current || !viewerSpaceRef.current) return;
 
-    const xrFrame = session?.requestAnimationFrame ? session : null;
-    if (!xrFrame || !hitTestSourceRef.current || !viewerSpaceRef.current) return;
-
-    session.requestAnimationFrame((time, frame) => {
-      const referenceSpace = viewerSpaceRef.current;
-      const hitTestSource = hitTestSourceRef.current;
-
-      const hitTestResults = frame.getHitTestResults(hitTestSource);
-      if (hitTestResults.length > 0) {
-        const hit = hitTestResults[0];
-        const pose = hit.getPose(referenceSpace);
-
+    const hitTestResults = frame.getHitTestResults(hitTestSourceRef.current);
+    if (hitTestResults.length > 0) {
+      const hit = hitTestResults[0];
+      const pose = hit.getPose(viewerSpaceRef.current);
+      if (pose) {
         ref.current.visible = true;
         ref.current.position.set(
           pose.transform.position.x,
@@ -34,11 +28,11 @@ function Reticle({ onSelect, selectedType, setInterventions }) {
           pose.transform.position.z
         );
         setVisible(true);
-      } else {
-        ref.current.visible = false;
-        setVisible(false);
       }
-    });
+    } else {
+      ref.current.visible = false;
+      setVisible(false);
+    }
   });
 
   React.useEffect(() => {
@@ -142,7 +136,6 @@ export default function ARMode() {
   const [error, setError] = useState(null);
 
   React.useEffect(() => {
-    // Check if WebXR is supported
     if (navigator.xr) {
       navigator.xr.isSessionSupported('immersive-ar').then((supported) => {
         setIsARSupported(supported);
