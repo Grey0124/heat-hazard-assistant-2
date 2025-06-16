@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { XR, ARButton } from '@react-three/xr';
+import { XR, ARButton, XRControllerModel } from '@react-three/xr';
 import { useTranslation } from 'react-i18next';
 import Navbar from '../components/Navbar';
 import { useNavigate } from 'react-router-dom';
@@ -10,35 +10,65 @@ export default function ARMode() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [selectedType, setSelectedType] = useState('tree');
-  const [isARSupported, setIsARSupported] = useState(true);
-  const [error, setError] = useState(null);
-  const [isInitializing, setIsInitializing] = useState(true);
+  const [arState, setARState] = useState({
+    isSupported: false,
+    isChecking: true,
+    features: {
+      hitTest: false,
+      lightEstimation: false,
+      anchors: false,
+      domOverlay: false
+    },
+    error: null
+  });
 
   useEffect(() => {
     let mounted = true;
 
     const checkARSupport = async () => {
       try {
-        if (navigator.xr) {
-          const supported = await navigator.xr.isSessionSupported('immersive-ar');
-          if (!mounted) return;
-          setIsARSupported(supported);
-          if (!supported) {
-            setError('AR is not supported on your device');
-          }
-        } else {
-          if (!mounted) return;
-          setIsARSupported(false);
-          setError('WebXR is not supported in your browser');
+        if (!navigator.xr) {
+          throw new Error('WebXR not supported in this browser');
         }
-      } catch (err) {
-        console.error('Error checking AR support:', err);
+
+        const supported = await navigator.xr.isSessionSupported('immersive-ar');
         if (!mounted) return;
-        setError('Error checking AR support');
-      } finally {
-        if (mounted) {
-          setIsInitializing(false);
+
+        if (!supported) {
+          throw new Error('AR not supported on this device');
         }
+
+        // Check available features by requesting a temporary session
+        const tempSession = await navigator.xr.requestSession('immersive-ar', {
+          requiredFeatures: ['hit-test'],
+          optionalFeatures: ['light-estimation', 'anchors', 'dom-overlay']
+        });
+
+        const features = {
+          hitTest: tempSession.enabledFeatures.includes('hit-test'),
+          lightEstimation: tempSession.enabledFeatures.includes('light-estimation'),
+          anchors: tempSession.enabledFeatures.includes('anchors'),
+          domOverlay: tempSession.enabledFeatures.includes('dom-overlay')
+        };
+
+        // End the temporary session
+        await tempSession.end();
+
+        setARState({
+          isSupported: true,
+          isChecking: false,
+          features,
+          error: null
+        });
+      } catch (err) {
+        console.error('AR Support Check Error:', err);
+        if (!mounted) return;
+        setARState(prev => ({
+          ...prev,
+          isSupported: false,
+          isChecking: false,
+          error: err.message || 'Failed to initialize AR'
+        }));
       }
     };
 
@@ -51,14 +81,17 @@ export default function ARMode() {
 
   const handleSessionError = (error) => {
     console.error('AR Session Error:', error);
-    setError('Failed to start AR session. Please try again.');
+    setARState(prev => ({
+      ...prev,
+      error: 'Failed to start AR session. Please try again.'
+    }));
   };
 
   const handleBack = () => {
     navigate('/mitigation-planner');
   };
 
-  if (isInitializing) {
+  if (arState.isChecking) {
     return (
       <div className="h-screen flex flex-col">
         <Navbar />
@@ -69,14 +102,14 @@ export default function ARMode() {
     );
   }
 
-  if (error) {
+  if (arState.error) {
     return (
       <div className="h-screen flex flex-col">
         <Navbar />
         <div className="flex-1 flex items-center justify-center">
-          <div className="bg-white/90 p-6 rounded-lg shadow-lg text-center">
+          <div className="bg-white/90 p-6 rounded-lg shadow-lg text-center max-w-md">
             <h3 className="text-lg font-semibold mb-2">AR Error</h3>
-            <p className="text-gray-600 mb-4">{error}</p>
+            <p className="text-gray-600 mb-4">{arState.error}</p>
             <div className="space-y-2">
               <button 
                 onClick={() => window.location.reload()} 
@@ -105,12 +138,16 @@ export default function ARMode() {
           <XR
             onError={handleSessionError}
             sessionInit={{
-              requiredFeatures: ['hit-test', 'dom-overlay'],
-              optionalFeatures: ['light-estimation', 'anchors'],
-              domOverlay: { root: document.body },
+              requiredFeatures: ['hit-test'],
+              optionalFeatures: ['light-estimation', 'anchors', 'dom-overlay'],
+              domOverlay: { root: document.body }
             }}
           >
-            <ARScene selectedType={selectedType} />
+            <XRControllerModel />
+            <ARScene 
+              selectedType={selectedType}
+              features={arState.features}
+            />
           </XR>
         </Canvas>
 
@@ -119,9 +156,14 @@ export default function ARMode() {
           <p className="text-gray-600 whitespace-pre-line">
             {t(
               'ar.instructionsText',
-              '1. Tap AR button to start\n2. Allow camera access when prompted\n3. Point camera at a flat surface\n4. Tap reticle to place intervention\n5. Use buttons below to switch types'
+              '1. Tap AR button to start\n2. Allow camera access when prompted\n3. Point camera at a flat surface\n4. Tap reticle to place intervention\n5. Use hand gestures or controllers to interact\n6. Use buttons below to switch types'
             )}
           </p>
+          {arState.features.lightEstimation && (
+            <p className="text-sm text-green-600 mt-2">
+              {t('ar.lightEstimationEnabled', 'Light estimation enabled for better visuals')}
+            </p>
+          )}
         </div>
 
         <div className="absolute bottom-4 left-4 right-4 bg-white/90 p-4 rounded-lg shadow-lg">
