@@ -86,10 +86,38 @@ function Intervention({ type, position, onDragStart, onDragEnd }) {
 
 export default function ARScene({ selectedType, features }) {
   const { isPresenting } = useXR();
-  const { gl } = useThree();
+  const { gl, camera } = useThree();
   const [interventions, setInterventions] = useState([]);
   const [draggedIntervention, setDraggedIntervention] = useState(null);
   const directionalLightRef = useRef();
+
+  // Initialize AR session
+  useEffect(() => {
+    if (!isPresenting) return;
+
+    // Set up camera for AR
+    camera.position.set(0, 0, 0);
+    camera.rotation.set(0, 0, 0);
+
+    // Set up WebGL renderer for AR
+    gl.setPixelRatio(window.devicePixelRatio);
+    gl.setSize(window.innerWidth, window.innerHeight);
+    gl.xr.enabled = true;
+
+    // Handle resize
+    const handleResize = () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      gl.setSize(window.innerWidth, window.innerHeight);
+    };
+
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      gl.xr.enabled = false;
+    };
+  }, [isPresenting, camera, gl]);
 
   // Handle light estimation if available
   useEffect(() => {

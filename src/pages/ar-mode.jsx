@@ -134,7 +134,23 @@ export default function ARMode() {
     <div className="h-screen flex flex-col">
       <Navbar />
       <div className="flex-1 relative">
-        <Canvas>
+        <div className="absolute top-4 right-4 z-10">
+          <ARButton />
+        </div>
+
+        <Canvas
+          camera={{
+            position: [0, 0, 5],
+            fov: 75,
+            near: 0.1,
+            far: 1000
+          }}
+          gl={{
+            antialias: true,
+            alpha: true,
+            preserveDrawingBuffer: true
+          }}
+        >
           <XR
             onError={handleSessionError}
             sessionInit={{
@@ -169,15 +185,12 @@ export default function ARMode() {
         <div className="absolute bottom-4 left-4 right-4 bg-white/90 p-4 rounded-lg shadow-lg">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold">{t('ar.selectIntervention', 'Select Intervention Type')}</h3>
-            <div className="flex space-x-2">
-              <button
-                onClick={handleBack}
-                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
-              >
-                Back
-              </button>
-              <ARButton />
-            </div>
+            <button
+              onClick={handleBack}
+              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+            >
+              Back
+            </button>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <button
