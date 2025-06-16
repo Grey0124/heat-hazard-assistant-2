@@ -1,78 +1,51 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 
 const ARModeEntry = () => {
-  const [isARSupported, setIsARSupported] = useState(null);
-  const [isChecking, setIsChecking] = useState(true);
+  const [supported, setSupported] = useState(null);
   const navigate = useNavigate();
-  const { t } = useTranslation();
 
   useEffect(() => {
-    const checkARSupport = async () => {
-      try {
-        if (navigator.xr) {
-          const supported = await navigator.xr.isSessionSupported('immersive-ar');
-          setIsARSupported(supported);
-        } else {
-          setIsARSupported(false);
+    const checkSupport = async () => {
+      if (navigator.xr) {
+        try {
+          const isSupported = await navigator.xr.isSessionSupported('immersive-ar');
+          setSupported(isSupported);
+        } catch {
+          setSupported(false);
         }
-      } catch (error) {
-        console.error('Error checking AR support:', error);
-        setIsARSupported(false);
-      } finally {
-        setIsChecking(false);
+      } else {
+        setSupported(false);
       }
     };
-
-    checkARSupport();
+    checkSupport();
   }, []);
 
-  const handleEnterAR = () => {
-    navigate('/ar-scene');
-  };
-
-  if (isChecking) {
-    return (
-      <div className="flex items-center justify-center p-4">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600"></div>
-      </div>
-    );
-  }
-
   return (
-    <div className="bg-white rounded-lg shadow-md p-6">
-      <h2 className="text-xl font-semibold mb-4">{t('ar.title', 'AR Mitigation Planner')}</h2>
-      
-      {isARSupported ? (
-        <div className="space-y-4">
-          <p className="text-gray-600">
-            {t('ar.supported', 'AR mode is supported on your device. Experience the mitigation planner in augmented reality.')}
-          </p>
-          <button
-            onClick={handleEnterAR}
-            className="w-full bg-amber-600 hover:bg-amber-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-300"
-          >
-            {t('ar.enterButton', 'Enter AR Mitigation Planner')}
-          </button>
-        </div>
+    <div className="p-6 max-w-lg mx-auto bg-white rounded-lg shadow">
+      <h2 className="text-xl font-semibold mb-4">AR Mitigation Planner</h2>
+      {supported === null ? (
+        <div className="animate-spin h-6 w-6 border-2 border-b-amber-600 rounded-full mx-auto"></div>
+      ) : supported ? (
+        <button
+          onClick={() => navigate('/ar-scene')}
+          className="w-full bg-amber-600 hover:bg-amber-700 text-white py-3 px-4 rounded-lg"
+        >
+          Enter AR Mode
+        </button>
       ) : (
-        <div className="space-y-4">
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-            <p className="text-amber-800">
-              {t('ar.notSupported', 'AR mode is not supported on your device. Please try using Android Chrome or use the Map Mode instead.')}
-            </p>
-          </div>
+        <>
+          <p className="text-red-600 mb-3">AR not supported on this device.</p>
           <button
             onClick={() => navigate('/mitigation-planner')}
-            className="w-full bg-gray-600 hover:bg-gray-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-300"
+            className="w-full bg-gray-600 hover:bg-gray-700 text-white py-3 px-4 rounded-lg"
           >
-            {t('ar.useMapMode', 'Use Map Mode')}
+            Use Map Mode Instead
           </button>
-        </div>
+        </>
       )}
     </div>
   );
 };
 
-export default ARModeEntry; 
+export default ARModeEntry;
