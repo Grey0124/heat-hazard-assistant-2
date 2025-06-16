@@ -2,25 +2,30 @@ import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useXR, useXRHitTest, Interactive } from '@react-three/xr';
 import * as THREE from 'three';
+import { useAR } from '../contexts/ARContext';
 
 function Reticle({ onSelect }) {
   const reticleRef = useRef();
   const [visible, setVisible] = useState(false);
-  const { session } = useXR();
+  const { isPresenting } = useXR();
 
   useXRHitTest((hitMatrix, hit) => {
-    if (!reticleRef.current) return;
+    if (!reticleRef.current || !isPresenting) return;
 
     reticleRef.current.visible = true;
     reticleRef.current.matrix.fromArray(hitMatrix);
     setVisible(true);
   });
 
+  if (!isPresenting || !visible) return null;
+
   return (
-    <mesh ref={reticleRef} visible={visible} onClick={onSelect}>
-      <ringGeometry args={[0.1, 0.15, 32]} />
-      <meshBasicMaterial color="white" side={THREE.DoubleSide} transparent opacity={0.8} />
-    </mesh>
+    <Interactive onSelect={onSelect}>
+      <mesh ref={reticleRef} rotation-x={-Math.PI / 2}>
+        <ringGeometry args={[0.1, 0.25, 32]} />
+        <meshStandardMaterial color="white" transparent opacity={0.8} />
+      </mesh>
+    </Interactive>
   );
 }
 
@@ -84,63 +89,71 @@ function Intervention({ type, position, onDragStart, onDragEnd }) {
   );
 }
 
-export default function ARScene({ selectedType, features }) {
-  const { isPresenting } = useXR();
-  const { gl, camera } = useThree();
+export default function ARScene({ selectedType }) {
+  const { isPresenting, session } = useXR();
+  const { gl, camera, scene } = useThree();
+  const { arState, setPresenting } = useAR();
   const [interventions, setInterventions] = useState([]);
   const [draggedIntervention, setDraggedIntervention] = useState(null);
   const directionalLightRef = useRef();
+  const sessionRef = useRef(null);
+
+  // Set up camera for non-AR mode
+  useEffect(() => {
+    if (!isPresenting) {
+      camera.position.z = 3;
+    }
+  }, [isPresenting, camera]);
 
   // Initialize AR session
   useEffect(() => {
-    if (!isPresenting) return;
+    if (!isPresenting || !session) return;
+
+    sessionRef.current = session;
+    setPresenting(true);
 
     // Set up camera for AR
     camera.position.set(0, 0, 0);
     camera.rotation.set(0, 0, 0);
 
     // Set up WebGL renderer for AR
-    gl.setPixelRatio(window.devicePixelRatio);
-    gl.setSize(window.innerWidth, window.innerHeight);
-    gl.xr.enabled = true;
+    const renderer = gl.getRenderer();
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.xr.enabled = true;
+
+    // Set up AR session
+    const xrLayer = new window.XRWebGLLayer(session, renderer.getContext());
+    session.updateRenderState({ baseLayer: xrLayer });
 
     // Handle resize
     const handleResize = () => {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
-      gl.setSize(window.innerWidth, window.innerHeight);
+      renderer.setSize(window.innerWidth, window.innerHeight);
     };
 
     window.addEventListener('resize', handleResize);
 
+    // Set up light estimation if available
+    if (arState.features?.lightEstimation) {
+      renderer.xr.environmentEstimation = true;
+    }
+
     return () => {
       window.removeEventListener('resize', handleResize);
-      gl.xr.enabled = false;
-    };
-  }, [isPresenting, camera, gl]);
-
-  // Handle light estimation if available
-  useEffect(() => {
-    if (!features?.lightEstimation || !isPresenting) return;
-
-    const session = gl.xr.getSession();
-    if (!session) return;
-
-    const lightEstimation = session.enabledFeatures.includes('light-estimation');
-    if (!lightEstimation) return;
-
-    const lightProbe = new THREE.LightProbe();
-    const renderer = gl.getRenderer();
-    renderer.xr.environmentEstimation = true;
-
-    return () => {
+      if (sessionRef.current) {
+        sessionRef.current.updateRenderState({ baseLayer: null });
+      }
+      renderer.xr.enabled = false;
       renderer.xr.environmentEstimation = false;
+      setPresenting(false);
     };
-  }, [features?.lightEstimation, isPresenting, gl]);
+  }, [isPresenting, session, camera, gl, arState.features?.lightEstimation, setPresenting]);
 
   // Update directional light based on light estimation
   useFrame((state) => {
-    if (!directionalLightRef.current || !features?.lightEstimation) return;
+    if (!directionalLightRef.current || !arState.features?.lightEstimation || !session) return;
 
     const frame = state.gl.xr.getFrame();
     if (!frame) return;
@@ -198,7 +211,7 @@ export default function ARScene({ selectedType, features }) {
   return (
     <>
       <ambientLight intensity={0.5} />
-      {features?.lightEstimation ? (
+      {arState.features?.lightEstimation ? (
         <directionalLight
           ref={directionalLightRef}
           position={[0, 1, 0]}

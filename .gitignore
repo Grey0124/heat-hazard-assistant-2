@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+/components_reference
+/contexts_reference
+/models_reference
