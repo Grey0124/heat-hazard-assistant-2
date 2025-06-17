@@ -4,11 +4,10 @@ import { XR, useXR } from '@react-three/xr';
 import { useNavigate } from 'react-router-dom';
 import ARScene from '../components/ARScene';
 import ARFallback from '../components/ARFallback';
-import ModernARButton from '../components/ModernARButton';
 import '../styles/ARMode.css';
 
-// AR Button Component that uses the XR store
-function ARButtonWrapper({ onError }) {
+// Simple AR Button Component
+function SimpleARButton() {
   const { store, isPresenting } = useXR();
   const [isSupported, setIsSupported] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
@@ -27,16 +26,13 @@ function ARButtonWrapper({ onError }) {
       } catch (error) {
         console.error('AR not supported:', error);
         setIsSupported(false);
-        if (onError) {
-          onError(error);
-        }
       } finally {
         setIsChecking(false);
       }
     };
 
     checkSupport();
-  }, [onError]);
+  }, []);
 
   const handleClick = async () => {
     if (!isSupported || isPresenting) return;
@@ -45,9 +41,6 @@ function ARButtonWrapper({ onError }) {
       await store.enterXR('immersive-ar');
     } catch (error) {
       console.error('Failed to start AR session:', error);
-      if (onError) {
-        onError(error);
-      }
     }
   };
 
@@ -97,7 +90,6 @@ function StatusIndicator() {
 export default function ARMode() {
   const navigate = useNavigate();
   const [selectedType, setSelectedType] = useState('tree');
-  const [error, setError] = useState(null);
   const [useFallback, setUseFallback] = useState(false);
   const [isARSupported, setIsARSupported] = useState(null);
   const [isChecking, setIsChecking] = useState(true);
@@ -107,7 +99,6 @@ export default function ARMode() {
       try {
         setIsChecking(true);
         
-        // Simple AR support check - this was working before
         if (navigator.xr) {
           const supported = await navigator.xr.isSessionSupported('immersive-ar');
           setIsARSupported(supported);
@@ -146,12 +137,6 @@ export default function ARMode() {
     setUseFallback(true);
   };
 
-  const handleARError = (error) => {
-    console.error('AR Error:', error);
-    setError(error.message || 'AR session error');
-    setUseFallback(true);
-  };
-
   // Loading state
   if (isChecking) {
     return (
@@ -164,32 +149,9 @@ export default function ARMode() {
     );
   }
 
-  // Use fallback if AR is not supported or user chooses to
+  // Use fallback if AR is not supported
   if (useFallback || !isARSupported) {
     return <ARFallback selectedType={selectedType} />;
-  }
-
-  // Error state with option to use fallback
-  if (error) {
-    return (
-      <div className="ar-mode-container">
-        <div className="error-overlay">
-          <h2>AR Not Available</h2>
-          <p>{error}</p>
-          <div className="error-buttons">
-            <button onClick={handleUseFallback} className="map-button">
-              Use 3D Preview
-            </button>
-            <button onClick={handleGoToMap} className="map-button">
-              Go to Map Mode
-            </button>
-            <button onClick={handleExit} className="exit-button">
-              Exit
-            </button>
-          </div>
-        </div>
-      </div>
-    );
   }
 
   return (
@@ -212,17 +174,13 @@ export default function ARMode() {
           background: 'transparent'
         }}
       >
-        <XR
-          onSessionStart={() => setError(null)}
-          onSessionEnd={() => setError('AR session ended')}
-          onError={handleARError}
-        >
+        <XR>
           <ARScene selectedType={selectedType} />
         </XR>
       </Canvas>
 
-      {/* Modern AR Button */}
-      <ARButtonWrapper onError={handleARError} />
+      {/* Simple AR Button */}
+      <SimpleARButton />
 
       {/* Instructions overlay */}
       <div className="ar-instructions">

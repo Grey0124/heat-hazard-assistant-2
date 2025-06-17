@@ -1,188 +1,136 @@
-import React, { useRef, useState, useCallback } from 'react';
-import { useFrame, useThree } from '@react-three/fiber';
-import { useXR, useXRHitTest, Interactive } from '@react-three/xr';
-import * as THREE from 'three';
-
-// Simple reticle component for AR placement
-function Reticle({ onSelect }) {
-  const reticleRef = useRef();
-  const [visible, setVisible] = useState(false);
-  const { isPresenting } = useXR();
-
-  useXRHitTest((hitMatrix, hit) => {
-    if (!reticleRef.current || !isPresenting) return;
-
-    reticleRef.current.visible = true;
-    reticleRef.current.matrix.fromArray(hitMatrix);
-    setVisible(true);
-  });
-
-  if (!isPresenting || !visible) return null;
-
-  return (
-    <Interactive onSelect={onSelect}>
-      <mesh ref={reticleRef} rotation-x={-Math.PI / 2}>
-        <ringGeometry args={[0.1, 0.25, 32]} />
-        <meshStandardMaterial color="white" transparent opacity={0.8} />
-      </mesh>
-    </Interactive>
-  );
-}
+import React, { useRef, useState } from 'react';
+import { useThree } from '@react-three/fiber';
+import { Interactive, useXRHitTest, useXR } from '@react-three/xr';
+import { OrbitControls } from '@react-three/drei';
 
 // Simple intervention models
-function Intervention({ type, position, onRemove }) {
-  const meshRef = useRef();
-
-  const model = (() => {
-    switch (type) {
-      case 'tree':
-        return (
-          <group position={position}>
-            {/* Tree trunk */}
-            <mesh position={[0, 0.25, 0]}>
-              <cylinderGeometry args={[0.05, 0.05, 0.2]} />
-              <meshStandardMaterial color="#8B4513" />
-            </mesh>
-            {/* Tree foliage */}
-            <mesh position={[0, 0.5, 0]}>
-              <coneGeometry args={[0.2, 0.4, 8]} />
-              <meshStandardMaterial color="#228B22" />
-            </mesh>
-          </group>
-        );
-      case 'roof':
-        return (
-          <group position={position}>
-            {/* Roof base */}
-            <mesh rotation={[-Math.PI / 2, 0, 0]}>
-              <planeGeometry args={[0.4, 0.4]} />
-              <meshStandardMaterial 
-                color="#87CEEB" 
-                transparent 
-                opacity={0.8}
-                side={THREE.DoubleSide}
-              />
-            </mesh>
-            {/* Roof structure */}
-            <mesh position={[0, 0.1, 0]} rotation={[0, 0, Math.PI / 4]}>
-              <boxGeometry args={[0.05, 0.2, 0.4]} />
-              <meshStandardMaterial color="#696969" />
-            </mesh>
-          </group>
-        );
-      case 'shade':
-        return (
-          <group position={position}>
-            {/* Shade structure */}
-            <mesh position={[0, 0.3, 0]}>
-              <cylinderGeometry args={[0.15, 0.15, 0.05]} />
-              <meshStandardMaterial color="#F5DEB3" />
-            </mesh>
-            {/* Support pole */}
-            <mesh position={[0, 0.15, 0]}>
-              <cylinderGeometry args={[0.02, 0.02, 0.3]} />
-              <meshStandardMaterial color="#8B4513" />
-            </mesh>
-          </group>
-        );
-      default:
-        return null;
-    }
-  })();
-
+function Tree({ position }) {
   return (
-    <Interactive onSelect={onRemove}>
-      <group ref={meshRef}>
-        {model}
-      </group>
-    </Interactive>
+    <group position={position}>
+      {/* Tree trunk */}
+      <mesh position={[0, 0.25, 0]}>
+        <cylinderGeometry args={[0.05, 0.05, 0.2]} />
+        <meshStandardMaterial color="#8B4513" />
+      </mesh>
+      {/* Tree foliage */}
+      <mesh position={[0, 0.5, 0]}>
+        <coneGeometry args={[0.2, 0.4, 8]} />
+        <meshStandardMaterial color="#228B22" />
+      </mesh>
+    </group>
   );
 }
 
-// Main AR Scene component
-export default function ARScene({ selectedType }) {
-  const { isPresenting } = useXR();
-  const { camera } = useThree();
-  const [interventions, setInterventions] = useState([]);
-  const [showInstructions, setShowInstructions] = useState(true);
+function Roof({ position }) {
+  return (
+    <group position={position}>
+      {/* Roof base */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[0.4, 0.4]} />
+        <meshStandardMaterial 
+          color="#87CEEB" 
+          transparent 
+          opacity={0.8}
+        />
+      </mesh>
+      {/* Roof structure */}
+      <mesh position={[0, 0.1, 0]} rotation={[0, 0, Math.PI / 4]}>
+        <boxGeometry args={[0.05, 0.2, 0.4]} />
+        <meshStandardMaterial color="#696969" />
+      </mesh>
+    </group>
+  );
+}
 
-  // Set up camera for non-AR mode
-  React.useEffect(() => {
+function Shade({ position }) {
+  return (
+    <group position={position}>
+      {/* Shade structure */}
+      <mesh position={[0, 0.3, 0]}>
+        <cylinderGeometry args={[0.15, 0.15, 0.05]} />
+        <meshStandardMaterial color="#F5DEB3" />
+      </mesh>
+      {/* Support pole */}
+      <mesh position={[0, 0.15, 0]}>
+        <cylinderGeometry args={[0.02, 0.02, 0.3]} />
+        <meshStandardMaterial color="#8B4513" />
+      </mesh>
+    </group>
+  );
+}
+
+// Main AR Scene component based on working reference
+export default function ARScene({ selectedType }) {
+  const reticleRef = useRef();
+  const [interventions, setInterventions] = useState([]);
+  const [reticleVisible, setReticleVisible] = useState(false);
+  const { isPresenting } = useXR();
+
+  // Set up camera for non-AR mode (from reference)
+  useThree(({ camera }) => {
     if (!isPresenting) {
       camera.position.z = 3;
     }
-  }, [isPresenting, camera]);
+  });
 
-  // Hide instructions after a delay
-  React.useEffect(() => {
-    if (isPresenting) {
-      const timer = setTimeout(() => setShowInstructions(false), 3000);
-      return () => clearTimeout(timer);
-    } else {
-      setShowInstructions(true);
-    }
-  }, [isPresenting]);
+  // Hit test for AR placement using useXRHitTest
+  useXRHitTest((hitMatrix, hit) => {
+    if (!reticleRef.current || !isPresenting) return;
+    
+    reticleRef.current.matrix.fromArray(hitMatrix);
+    setReticleVisible(true);
+  });
 
-  const handleReticleClick = useCallback((event) => {
+  // Place intervention
+  const placeIntervention = (e) => {
     if (!isPresenting) return;
+    
+    const position = e.object.position.clone();
+    const id = Date.now();
+    setInterventions([...interventions, { position, id, type: selectedType }]);
+  };
 
-    const position = event.object.position.clone();
-    const newIntervention = {
-      id: Date.now(),
-      type: selectedType,
-      position: [position.x, position.y, position.z]
-    };
-
-    setInterventions((prev) => [...prev, newIntervention]);
-  }, [isPresenting, selectedType]);
-
-  const handleRemoveIntervention = useCallback((event) => {
-    const interventionId = event.object.userData?.id;
-    if (interventionId) {
-      setInterventions((prev) => prev.filter(int => int.id !== interventionId));
+  // Render intervention based on type
+  const renderIntervention = ({ position, id, type }) => {
+    switch (type) {
+      case 'tree':
+        return <Tree key={id} position={position} />;
+      case 'roof':
+        return <Roof key={id} position={position} />;
+      case 'shade':
+        return <Shade key={id} position={position} />;
+      default:
+        return <Tree key={id} position={position} />;
     }
-  }, []);
+  };
 
   return (
     <>
-      {/* Lighting */}
+      <OrbitControls />
       <ambientLight intensity={0.6} />
       <directionalLight position={[10, 10, 5]} intensity={0.8} />
       
-      {/* Interventions */}
-      {interventions.map((int) => (
-        <Intervention 
-          key={int.id}
-          type={int.type}
-          position={int.position}
-          onRemove={handleRemoveIntervention}
-          userData={{ id: int.id }}
-        />
-      ))}
+      {/* Show placed interventions in AR mode */}
+      {isPresenting &&
+        interventions.map((intervention) => {
+          return renderIntervention(intervention);
+        })}
       
-      {/* AR Reticle */}
-      <Reticle onSelect={handleReticleClick} />
-      
-      {/* Instructions overlay */}
-      {showInstructions && isPresenting && (
-        <div style={{
-          position: 'fixed',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          background: 'rgba(0, 0, 0, 0.8)',
-          color: 'white',
-          padding: '20px',
-          borderRadius: '10px',
-          textAlign: 'center',
-          zIndex: 1000,
-          maxWidth: '300px'
-        }}>
-          <h3>AR Instructions</h3>
-          <p>Point your camera at a flat surface</p>
-          <p>Tap the reticle to place {selectedType}</p>
-          <p>Tap placed objects to remove them</p>
-        </div>
+      {/* AR Reticle for placement */}
+      {isPresenting && reticleVisible && (
+        <Interactive onSelect={placeIntervention}>
+          <mesh ref={reticleRef} rotation-x={-Math.PI / 2}>
+            <ringGeometry args={[0.1, 0.25, 32]} />
+            <meshStandardMaterial color="white" transparent opacity={0.8} />
+          </mesh>
+        </Interactive>
+      )}
+
+      {/* Show preview in non-AR mode */}
+      {!isPresenting && (
+        <group position={[0, 0, -2]}>
+          {renderIntervention({ position: [0, 0, 0], id: 'preview', type: selectedType })}
+        </group>
       )}
     </>
   );
