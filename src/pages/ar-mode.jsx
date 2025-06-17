@@ -76,15 +76,7 @@ function CustomARButton({ onARStart }) {
   };
 
   if (isChecking) {
-    return (
-      <button 
-        className="ar-button" 
-        disabled
-        style={{ opacity: 0.5, cursor: 'not-allowed' }}
-      >
-        Checking AR...
-      </button>
-    );
+    return null; // Don't render anything while checking
   }
 
   if (!isSupported) {
@@ -92,21 +84,17 @@ function CustomARButton({ onARStart }) {
   }
 
   return (
-    <button
-      className="ar-button"
+    <mesh
+      position={[0, 0.1, -2]}
       onClick={handleClick}
-      disabled={isPresenting}
-      style={{
-        opacity: isPresenting ? 0.5 : 1,
-        cursor: isPresenting ? 'not-allowed' : 'pointer'
-      }}
     >
-      {isPresenting ? 'AR Active' : 'Start AR Experience'}
-    </button>
+      <boxGeometry args={[0.8, 0.2, 0.3]} />
+      <meshStandardMaterial color={isPresenting ? "#666" : "#2196f3"} />
+    </mesh>
   );
 }
 
-// Status Indicator Component
+// Status Indicator Component - moved outside Canvas
 function StatusIndicator({ isPresenting }) {
   return (
     <div className="status-indicator">
@@ -444,6 +432,7 @@ export default function ARMode() {
   }, []);
 
   const handleTypeChange = (type) => {
+    console.log('Type changed to:', type);
     setSelectedType(type);
   };
 
@@ -506,7 +495,7 @@ export default function ARMode() {
 
   // Use fallback if AR is not supported
   if (useFallback || !isARSupported) {
-    return <ARFallback selectedType={selectedType} />;
+    return <ARFallback selectedType={selectedType} onTypeChange={handleTypeChange} />;
   }
 
   return (
@@ -560,10 +549,12 @@ export default function ARMode() {
               isARMode={isARMode}
             />
             <CustomARButton onARStart={handleARStart} />
-            <StatusIndicator isPresenting={isARMode} />
           </Canvas>
         </Suspense>
       </ARErrorBoundary>
+
+      {/* Status indicator outside Canvas */}
+      <StatusIndicator isPresenting={isARMode} />
 
       {/* Location status */}
       <div className="location-status">

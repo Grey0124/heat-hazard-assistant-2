@@ -174,15 +174,10 @@ function PreviewScene({ selectedType, onInterventionAdded }) {
   );
 }
 
-export default function ARFallback({ selectedType }) {
+export default function ARFallback({ selectedType, onTypeChange }) {
   const navigate = useNavigate();
   const [placedInterventions, setPlacedInterventions] = useState([]);
   const [isControlsMinimized, setIsControlsMinimized] = useState(false);
-
-  const handleTypeChange = (type) => {
-    // This would need to be passed from parent or managed differently
-    console.log('Type changed to:', type);
-  };
 
   const handleExit = () => {
     navigate('/');
@@ -306,19 +301,19 @@ export default function ARFallback({ selectedType }) {
         <div className="intervention-controls">
           <button
             className={`intervention-button ${selectedType === 'tree' ? 'active' : ''}`}
-            onClick={() => handleTypeChange('tree')}
+            onClick={() => onTypeChange && onTypeChange('tree')}
           >
             🌳 Tree
           </button>
           <button
             className={`intervention-button ${selectedType === 'roof' ? 'active' : ''}`}
-            onClick={() => handleTypeChange('roof')}
+            onClick={() => onTypeChange && onTypeChange('roof')}
           >
             🏠 Roof
           </button>
           <button
             className={`intervention-button ${selectedType === 'shade' ? 'active' : ''}`}
-            onClick={() => handleTypeChange('shade')}
+            onClick={() => onTypeChange && onTypeChange('shade')}
           >
             ☂️ Shade
           </button>
