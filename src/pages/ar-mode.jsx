@@ -1,10 +1,27 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { XR, useXR } from '@react-three/xr';
 import { useNavigate } from 'react-router-dom';
 import ARScene from '../components/ARScene';
 import ARFallback from '../components/ARFallback';
+import ARErrorBoundary from '../components/ARErrorBoundary';
 import '../styles/ARMode.css';
+
+// Loading component for Suspense
+function CanvasLoader() {
+  return (
+    <div style={{
+      position: 'absolute',
+      top: '50%',
+      left: '50%',
+      transform: 'translate(-50%, -50%)',
+      color: 'white',
+      fontSize: '18px'
+    }}>
+      Loading AR Experience...
+    </div>
+  );
+}
 
 // AR Button Component that must be inside XR context
 function ARButton() {
@@ -104,11 +121,13 @@ export default function ARMode() {
   const [useFallback, setUseFallback] = useState(false);
   const [isARSupported, setIsARSupported] = useState(null);
   const [isChecking, setIsChecking] = useState(true);
+  const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
     const checkARSupport = async () => {
       try {
         setIsChecking(true);
+        setHasError(false);
         
         if (navigator.xr) {
           const supported = await navigator.xr.isSessionSupported('immersive-ar');
@@ -124,6 +143,7 @@ export default function ARMode() {
         console.error('Error checking AR support:', err);
         setIsARSupported(false);
         setUseFallback(true);
+        setHasError(true);
       } finally {
         setIsChecking(false);
       }
@@ -144,6 +164,30 @@ export default function ARMode() {
     navigate('/mitigation-planner');
   };
 
+  const handleFallback = () => {
+    setUseFallback(true);
+  };
+
+  // Error state
+  if (hasError) {
+    return (
+      <div className="ar-mode-container">
+        <div className="error-overlay">
+          <h2>AR Not Available</h2>
+          <p>Your device or browser doesn't support AR features. You can still use the 3D preview mode.</p>
+          <div className="error-buttons">
+            <button onClick={handleFallback} className="map-button">
+              Use 3D Preview
+            </button>
+            <button onClick={handleExit} className="exit-button">
+              Exit
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Loading state
   if (isChecking) {
     return (
@@ -163,28 +207,35 @@ export default function ARMode() {
 
   return (
     <div className="ar-mode-container">
-      {/* Three.js Canvas */}
-      <Canvas
-        camera={{ position: [0, 0, 0], fov: 75, near: 0.1, far: 1000 }}
-        gl={{
-          antialias: true,
-          alpha: true,
-          powerPreference: 'high-performance',
-          xrCompatible: true
-        }}
-        style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          background: 'transparent'
-        }}
-      >
-        <XR>
-          <ARSceneWithUI selectedType={selectedType} />
-        </XR>
-      </Canvas>
+      {/* Three.js Canvas with error boundary */}
+      <ARErrorBoundary onFallback={handleFallback} onExit={handleExit}>
+        <Suspense fallback={<CanvasLoader />}>
+          <Canvas
+            camera={{ position: [0, 0, 3], fov: 75 }}
+            gl={{ 
+              antialias: true,
+              alpha: true,
+              preserveDrawingBuffer: true,
+              powerPreference: 'default'
+            }}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              background: 'transparent'
+            }}
+            onCreated={({ gl }) => {
+              gl.setClearColor(0x000000, 0);
+            }}
+          >
+            <XR>
+              <ARSceneWithUI selectedType={selectedType} />
+            </XR>
+          </Canvas>
+        </Suspense>
+      </ARErrorBoundary>
 
       {/* Instructions overlay */}
       <div className="ar-instructions">

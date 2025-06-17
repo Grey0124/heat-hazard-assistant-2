@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 class ARErrorBoundary extends React.Component {
   constructor(props) {
@@ -29,52 +30,57 @@ class ARErrorBoundary extends React.Component {
           alignItems: 'center',
           justifyContent: 'center',
           padding: '20px',
-          zIndex: 9999
+          textAlign: 'center'
         }}>
-          <div style={{
-            background: 'white',
-            padding: '30px',
-            borderRadius: '12px',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-            textAlign: 'center',
-            maxWidth: '400px'
-          }}>
-            <h2 style={{ color: '#f44336', marginBottom: '16px' }}>
-              AR Experience Error
-            </h2>
-            <p style={{ color: '#666', marginBottom: '24px', lineHeight: '1.5' }}>
-              Something went wrong with the AR experience. This might be due to device compatibility or browser limitations.
-            </p>
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-              <button
-                onClick={() => window.location.reload()}
-                style={{
-                  padding: '12px 24px',
-                  border: 'none',
-                  borderRadius: '8px',
-                  background: '#2196f3',
-                  color: 'white',
-                  cursor: 'pointer',
-                  fontSize: '16px'
-                }}
-              >
-                Try Again
-              </button>
-              <button
-                onClick={() => window.history.back()}
-                style={{
-                  padding: '12px 24px',
-                  border: 'none',
-                  borderRadius: '8px',
-                  background: '#666',
-                  color: 'white',
-                  cursor: 'pointer',
-                  fontSize: '16px'
-                }}
-              >
-                Go Back
-              </button>
-            </div>
+          <h2 style={{ color: '#f44336', marginBottom: '16px' }}>
+            AR Experience Error
+          </h2>
+          <p style={{ color: '#666', marginBottom: '24px', maxWidth: '400px' }}>
+            There was an issue loading the AR experience. This might be due to WebGL compatibility or device limitations.
+          </p>
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'center' }}>
+            <button
+              onClick={() => window.location.reload()}
+              style={{
+                padding: '12px 24px',
+                border: 'none',
+                borderRadius: '8px',
+                background: '#2196f3',
+                color: 'white',
+                cursor: 'pointer',
+                fontSize: '16px'
+              }}
+            >
+              Try Again
+            </button>
+            <button
+              onClick={() => this.props.onFallback()}
+              style={{
+                padding: '12px 24px',
+                border: 'none',
+                borderRadius: '8px',
+                background: '#4caf50',
+                color: 'white',
+                cursor: 'pointer',
+                fontSize: '16px'
+              }}
+            >
+              Use 3D Preview
+            </button>
+            <button
+              onClick={() => this.props.onExit()}
+              style={{
+                padding: '12px 24px',
+                border: 'none',
+                borderRadius: '8px',
+                background: '#f44336',
+                color: 'white',
+                cursor: 'pointer',
+                fontSize: '16px'
+              }}
+            >
+              Exit
+            </button>
           </div>
         </div>
       );

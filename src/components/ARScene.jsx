@@ -59,14 +59,14 @@ function Shade({ position }) {
   );
 }
 
-// Main AR Scene component based on working reference
+// Main AR Scene component
 export default function ARScene({ selectedType }) {
   const reticleRef = useRef();
   const [interventions, setInterventions] = useState([]);
   const [reticleVisible, setReticleVisible] = useState(false);
   const { isPresenting } = useXR();
 
-  // Set up camera for non-AR mode (from reference)
+  // Set up camera for non-AR mode
   useThree(({ camera }) => {
     if (!isPresenting) {
       camera.position.z = 3;
