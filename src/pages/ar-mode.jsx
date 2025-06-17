@@ -32,9 +32,10 @@ function PreviewScene({ selectedType }) {
   ]);
 
   const addIntervention = () => {
+    console.log('Adding intervention of type:', selectedType); // Debug log
     const newIntervention = {
       id: Date.now(),
-      type: selectedType,
+      type: selectedType, // This should use the current selectedType
       position: [
         (Math.random() - 0.5) * 4,
         0,
@@ -97,6 +98,20 @@ function PreviewScene({ selectedType }) {
     }
   };
 
+  // Get button color based on selected type
+  const getButtonColor = () => {
+    switch (selectedType) {
+      case 'tree':
+        return '#228B22'; // Green for tree
+      case 'roof':
+        return '#87CEEB'; // Light blue for roof
+      case 'shade':
+        return '#F5DEB3'; // Tan for shade
+      default:
+        return '#2196f3'; // Default blue
+    }
+  };
+
   return (
     <>
       <OrbitControls />
@@ -111,13 +126,13 @@ function PreviewScene({ selectedType }) {
       
       {interventions.map((int) => renderIntervention(int))}
       
-      {/* Add intervention button */}
+      {/* Add intervention button - color changes based on selected type */}
       <mesh 
         position={[0, 0.1, 2]} 
         onClick={addIntervention}
       >
         <boxGeometry args={[0.3, 0.1, 0.3]} />
-        <meshStandardMaterial color="#2196f3" />
+        <meshStandardMaterial color={getButtonColor()} />
       </mesh>
     </>
   );
