@@ -1,7 +1,8 @@
 import React, { useState, useEffect, Suspense, useRef } from 'react';
-import { Canvas } from '@react-three/fiber';
+import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import { useNavigate } from 'react-router-dom';
+import * as THREE from 'three';
 import ARScene from '../components/ARScene';
 import ARFallback from '../components/ARFallback';
 import ARErrorBoundary from '../components/ARErrorBoundary';
@@ -23,101 +24,143 @@ function CanvasLoader() {
   );
 }
 
+// AR Session Manager Component
+function ARSessionManager({ onARSessionStart, onARSessionEnd }) {
+  const { gl, scene, camera } = useThree();
+  const [arSession, setArSession] = useState(null);
+  const [isARActive, setIsARActive] = useState(false);
+  const [hitTestSource, setHitTestSource] = useState(null);
+  const [viewerSpace, setViewerSpace] = useState(null);
+
+  useEffect(() => {
+    const startARSession = async () => {
+      try {
+        if (!('xr' in navigator)) {
+          console.error('WebXR not supported');
+          return;
+        }
+
+        const supported = await navigator.xr.isSessionSupported('immersive-ar');
+        if (!supported) {
+          console.error('AR not supported');
+          return;
+        }
+
+        // Enable XR on the renderer
+        gl.xr.enabled = true;
+        gl.xr.setReferenceSpaceType('local');
+
+        const session = await navigator.xr.requestSession('immersive-ar', {
+          requiredFeatures: ['hit-test'],
+          optionalFeatures: ['light-estimation', 'anchors']
+        });
+
+        setArSession(session);
+        setIsARActive(true);
+
+        // Set up the AR session
+        await gl.xr.setSession(session);
+
+        // Set up hit testing
+        const refSpace = await session.requestReferenceSpace('viewer');
+        const hitTestSource = await session.requestHitTestSource({ space: refSpace });
+        
+        setViewerSpace(refSpace);
+        setHitTestSource(hitTestSource);
+
+        // Set up the render loop
+        const renderLoop = (time, frame) => {
+          if (frame) {
+            // Handle hit testing
+            if (hitTestSource) {
+              const hitTestResults = frame.getHitTestResults(hitTestSource);
+              if (hitTestResults.length > 0) {
+                const hit = hitTestResults[0];
+                const pose = hit.getPose(refSpace);
+                if (pose) {
+                  // Update reticle position
+                  const { transform } = pose;
+                  const position = new THREE.Vector3(
+                    transform.matrix[12],
+                    transform.matrix[13],
+                    transform.matrix[14]
+                  );
+                  
+                  // Emit hit test result
+                  if (onARSessionStart) {
+                    onARSessionStart({ type: 'hit-test', position, pose });
+                  }
+                }
+              }
+            }
+          }
+          
+          // Continue the render loop
+          session.requestAnimationFrame(renderLoop);
+        };
+
+        session.requestAnimationFrame(renderLoop);
+
+        session.addEventListener('end', () => {
+          setIsARActive(false);
+          setArSession(null);
+          setHitTestSource(null);
+          setViewerSpace(null);
+          
+          if (onARSessionEnd) {
+            onARSessionEnd();
+          }
+        });
+
+        if (onARSessionStart) {
+          onARSessionStart({ type: 'session-start', session });
+        }
+
+        console.log('AR session started successfully');
+
+      } catch (error) {
+        console.error('Failed to start AR session:', error);
+      }
+    };
+
+    // Start AR session when component mounts
+    startARSession();
+
+    return () => {
+      if (arSession) {
+        arSession.end();
+      }
+    };
+  }, []);
+
+  return null; // This component doesn't render anything
+}
+
 // Real AR Scene with camera access and hit-testing
 function RealARScene({ selectedType, onInterventionAdded, originLat, originLng, isARMode }) {
   const [interventions, setInterventions] = useState([]);
   const [selectedObject, setSelectedObject] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState(null);
-  const [arSession, setArSession] = useState(null);
-  const [isARActive, setIsARActive] = useState(false);
-  const [hitTestResults, setHitTestResults] = useState(null);
   const [reticleVisible, setReticleVisible] = useState(false);
   const [reticlePosition, setReticlePosition] = useState([0, 0, 0]);
   const [reticleRotation, setReticleRotation] = useState([0, 0, 0]);
+  const [isARActive, setIsARActive] = useState(false);
 
-  // AR Session management
-  useEffect(() => {
-    if (isARMode && !arSession) {
-      startARSession();
-    }
-    
-    return () => {
-      if (arSession) {
-        arSession.end();
-      }
-    };
-  }, [isARMode]);
-
-  const startARSession = async () => {
-    try {
-      if (!('xr' in navigator)) {
-        console.error('WebXR not supported');
-        return;
-      }
-
-      const supported = await navigator.xr.isSessionSupported('immersive-ar');
-      if (!supported) {
-        console.error('AR not supported');
-        return;
-      }
-
-      const session = await navigator.xr.requestSession('immersive-ar', {
-        requiredFeatures: ['hit-test'],
-        optionalFeatures: ['light-estimation', 'anchors']
-      });
-
-      setArSession(session);
+  const handleARSessionStart = (data) => {
+    if (data.type === 'session-start') {
       setIsARActive(true);
-
-      // Set up hit testing
-      const viewerSpace = await session.requestReferenceSpace('viewer');
-      const hitTestSource = await session.requestHitTestSource({ space: viewerSpace });
-
-      // Handle frame updates for hit testing
-      session.requestAnimationFrame((time, frame) => {
-        if (frame) {
-          const hitTestResults = frame.getHitTestResults(hitTestSource);
-          if (hitTestResults.length > 0) {
-            const hit = hitTestResults[0];
-            const pose = hit.getPose(viewerSpace);
-            
-            if (pose) {
-              const { transform } = pose;
-              const position = [
-                transform.matrix[12],
-                transform.matrix[13],
-                transform.matrix[14]
-              ];
-              const rotation = [
-                Math.atan2(transform.matrix[6], transform.matrix[10]),
-                Math.asin(-transform.matrix[2]),
-                Math.atan2(transform.matrix[1], transform.matrix[0])
-              ];
-              
-              setReticlePosition(position);
-              setReticleRotation(rotation);
-              setReticleVisible(true);
-              setHitTestResults(hit);
-            }
-          } else {
-            setReticleVisible(false);
-          }
-        }
-        
-        // Continue the AR loop
-        session.requestAnimationFrame(arguments.callee);
-      });
-
-      session.addEventListener('end', () => {
-        setIsARActive(false);
-        setArSession(null);
-        setReticleVisible(false);
-      });
-
-    } catch (error) {
-      console.error('Failed to start AR session:', error);
+      console.log('AR session active');
+    } else if (data.type === 'hit-test') {
+      setReticlePosition([data.position.x, data.position.y, data.position.z]);
+      setReticleVisible(true);
     }
+  };
+
+  const handleARSessionEnd = () => {
+    setIsARActive(false);
+    setReticleVisible(false);
+    console.log('AR session ended');
   };
 
   const addIntervention = (position) => {
@@ -346,19 +389,12 @@ function RealARScene({ selectedType, onInterventionAdded, originLat, originLng, 
 
   return (
     <>
-      {/* AR Camera Background */}
-      {isARActive && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          background: 'transparent',
-          zIndex: 1
-        }}>
-          {/* Real camera feed will be handled by WebXR */}
-        </div>
+      {/* AR Session Manager */}
+      {isARMode && (
+        <ARSessionManager 
+          onARSessionStart={handleARSessionStart}
+          onARSessionEnd={handleARSessionEnd}
+        />
       )}
 
       {/* AR Scene */}
