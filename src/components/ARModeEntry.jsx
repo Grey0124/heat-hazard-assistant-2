@@ -2,22 +2,21 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useAR } from '../contexts/ARContext';
 
 const ARModeEntry = () => {
   const [isARSupported, setIsARSupported] = useState(null);
   const [isChecking, setIsChecking] = useState(true);
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { arState, checkARSupport } = useAR();
 
   useEffect(() => {
     const checkARSupport = async () => {
       try {
-        if (navigator.xr) {
-          const supported = await navigator.xr.isSessionSupported('immersive-ar');
-          setIsARSupported(supported);
-        } else {
-          setIsARSupported(false);
-        }
+        setIsChecking(true);
+        await checkARSupport();
+        setIsARSupported(arState.isSupported);
       } catch (error) {
         console.error('Error checking AR support:', error);
         setIsARSupported(false);
@@ -27,51 +26,125 @@ const ARModeEntry = () => {
     };
 
     checkARSupport();
-  }, []);
+  }, [checkARSupport, arState.isSupported]);
 
   const handleEnterAR = () => {
     navigate('/ar-scene');
   };
 
+  const handleGoToMap = () => {
+    navigate('/mitigation-planner');
+  };
+
   if (isChecking) {
     return (
-      <div className="flex items-center justify-center p-4">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600"></div>
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-100 flex items-center justify-center p-4">
+        <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600 mx-auto mb-4"></div>
+          <h2 className="text-xl font-semibold text-gray-800 mb-2">
+            {t('ar.checking', 'Checking AR Support')}
+          </h2>
+          <p className="text-gray-600">
+            {t('ar.checkingDesc', 'Verifying if your device supports AR features...')}
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6">
-      <h2 className="text-xl font-semibold mb-4">{t('ar.title', 'AR Mitigation Planner')}</h2>
-      
-      {isARSupported ? (
-        <div className="space-y-4">
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-100 flex items-center justify-center p-4">
+      <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full">
+        <div className="text-center mb-6">
+          <div className="text-4xl mb-4">🌍</div>
+          <h1 className="text-2xl font-bold text-gray-800 mb-2">
+            {t('ar.title', 'AR Mitigation Planner')}
+          </h1>
           <p className="text-gray-600">
-            {t('ar.supported', 'AR mode is supported on your device. Experience the mitigation planner in augmented reality.')}
+            {t('ar.subtitle', 'Experience heat mitigation strategies in augmented reality')}
           </p>
-          <button
-            onClick={handleEnterAR}
-            className="w-full bg-amber-600 hover:bg-amber-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-300"
-          >
-            {t('ar.enterButton', 'Enter AR Mitigation Planner')}
-          </button>
         </div>
-      ) : (
-        <div className="space-y-4">
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-            <p className="text-amber-800">
-              {t('ar.notSupported', 'AR mode is not supported on your device. Please try using Android Chrome or use the Map Mode instead.')}
-            </p>
+        
+        {isARSupported ? (
+          <div className="space-y-6">
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <div className="flex items-center">
+                <div className="text-green-600 text-xl mr-3">✅</div>
+                <div>
+                  <h3 className="font-semibold text-green-800">
+                    {t('ar.supported', 'AR Supported')}
+                  </h3>
+                  <p className="text-green-700 text-sm">
+                    {t('ar.supportedDesc', 'Your device supports AR features. You can experience the mitigation planner in augmented reality.')}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <h3 className="font-semibold text-blue-800 mb-2">
+                {t('ar.instructions', 'How to use AR mode:')}
+              </h3>
+              <ul className="text-blue-700 text-sm space-y-1">
+                <li>• {t('ar.step1', 'Point your camera at a flat surface')}</li>
+                <li>• {t('ar.step2', 'Tap to place heat mitigation objects')}</li>
+                <li>• {t('ar.step3', 'Choose from trees, roofs, and shade structures')}</li>
+                <li>• {t('ar.step4', 'Tap placed objects to remove them')}</li>
+              </ul>
+            </div>
+
+            <button
+              onClick={handleEnterAR}
+              className="w-full bg-amber-600 hover:bg-amber-700 text-white font-semibold py-4 px-6 rounded-lg transition duration-300 text-lg"
+            >
+              {t('ar.enterButton', '🚀 Enter AR Experience')}
+            </button>
           </div>
-          <button
-            onClick={() => navigate('/mitigation-planner')}
-            className="w-full bg-gray-600 hover:bg-gray-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-300"
-          >
-            {t('ar.useMapMode', 'Use Map Mode')}
-          </button>
-        </div>
-      )}
+        ) : (
+          <div className="space-y-6">
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+              <div className="flex items-center">
+                <div className="text-amber-600 text-xl mr-3">⚠️</div>
+                <div>
+                  <h3 className="font-semibold text-amber-800">
+                    {t('ar.notSupported', 'AR Not Available')}
+                  </h3>
+                  <p className="text-amber-700 text-sm">
+                    {t('ar.notSupportedDesc', 'Your device does not support AR features. This could be due to browser limitations or device compatibility.')}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+              <h3 className="font-semibold text-gray-800 mb-2">
+                {t('ar.alternatives', 'Alternative options:')}
+              </h3>
+              <ul className="text-gray-700 text-sm space-y-1">
+                <li>• {t('ar.alternative1', 'Use the 2D map mode for planning')}</li>
+                <li>• {t('ar.alternative2', 'Try on a different device with AR support')}</li>
+                <li>• {t('ar.alternative3', 'Use Chrome on Android for best AR experience')}</li>
+              </ul>
+            </div>
+
+            <div className="space-y-3">
+              <button
+                onClick={handleGoToMap}
+                className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-300"
+              >
+                {t('ar.useMapMode', '🗺️ Use Map Mode')}
+              </button>
+              
+              <button
+                onClick={() => navigate('/')}
+                className="w-full bg-gray-600 hover:bg-gray-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-300"
+              >
+                {t('ar.goBack', '← Go Back')}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

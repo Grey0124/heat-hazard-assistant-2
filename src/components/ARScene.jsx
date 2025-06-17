@@ -1,9 +1,9 @@
-import React, { useRef, useState, useCallback, useEffect } from 'react';
+import React, { useRef, useState, useCallback } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useXR, useXRHitTest, Interactive } from '@react-three/xr';
 import * as THREE from 'three';
-import { useAR } from '../contexts/ARContext';
 
+// Simple reticle component for AR placement
 function Reticle({ onSelect }) {
   const reticleRef = useRef();
   const [visible, setVisible] = useState(false);
@@ -29,48 +29,61 @@ function Reticle({ onSelect }) {
   );
 }
 
-function Intervention({ type, position, onDragStart, onDragEnd }) {
+// Simple intervention models
+function Intervention({ type, position, onRemove }) {
   const meshRef = useRef();
-  const [isDragging, setIsDragging] = useState(false);
-
-  const handleDragStart = useCallback((e) => {
-    e.stopPropagation();
-    setIsDragging(true);
-    onDragStart?.(e);
-  }, [onDragStart]);
-
-  const handleDragEnd = useCallback((e) => {
-    e.stopPropagation();
-    setIsDragging(false);
-    onDragEnd?.(e);
-  }, [onDragEnd]);
 
   const model = (() => {
     switch (type) {
       case 'tree':
         return (
           <group position={position}>
+            {/* Tree trunk */}
             <mesh position={[0, 0.25, 0]}>
               <cylinderGeometry args={[0.05, 0.05, 0.2]} />
-              <meshStandardMaterial color="brown" />
+              <meshStandardMaterial color="#8B4513" />
             </mesh>
+            {/* Tree foliage */}
             <mesh position={[0, 0.5, 0]}>
               <coneGeometry args={[0.2, 0.4, 8]} />
-              <meshStandardMaterial color="#2e7d32" />
+              <meshStandardMaterial color="#228B22" />
             </mesh>
           </group>
         );
       case 'roof':
         return (
-          <mesh position={position} rotation={[-Math.PI / 2, 0, 0]}>
-            <planeGeometry args={[0.4, 0.4]} />
-            <meshStandardMaterial 
-              color="#90caf9" 
-              transparent 
-              opacity={0.7}
-              side={THREE.DoubleSide}
-            />
-          </mesh>
+          <group position={position}>
+            {/* Roof base */}
+            <mesh rotation={[-Math.PI / 2, 0, 0]}>
+              <planeGeometry args={[0.4, 0.4]} />
+              <meshStandardMaterial 
+                color="#87CEEB" 
+                transparent 
+                opacity={0.8}
+                side={THREE.DoubleSide}
+              />
+            </mesh>
+            {/* Roof structure */}
+            <mesh position={[0, 0.1, 0]} rotation={[0, 0, Math.PI / 4]}>
+              <boxGeometry args={[0.05, 0.2, 0.4]} />
+              <meshStandardMaterial color="#696969" />
+            </mesh>
+          </group>
+        );
+      case 'shade':
+        return (
+          <group position={position}>
+            {/* Shade structure */}
+            <mesh position={[0, 0.3, 0]}>
+              <cylinderGeometry args={[0.15, 0.15, 0.05]} />
+              <meshStandardMaterial color="#F5DEB3" />
+            </mesh>
+            {/* Support pole */}
+            <mesh position={[0, 0.15, 0]}>
+              <cylinderGeometry args={[0.02, 0.02, 0.3]} />
+              <meshStandardMaterial color="#8B4513" />
+            </mesh>
+          </group>
         );
       default:
         return null;
@@ -78,10 +91,7 @@ function Intervention({ type, position, onDragStart, onDragEnd }) {
   })();
 
   return (
-    <Interactive
-      onSelectStart={handleDragStart}
-      onSelectEnd={handleDragEnd}
-    >
+    <Interactive onSelect={onRemove}>
       <group ref={meshRef}>
         {model}
       </group>
@@ -89,88 +99,27 @@ function Intervention({ type, position, onDragStart, onDragEnd }) {
   );
 }
 
+// Main AR Scene component
 export default function ARScene({ selectedType }) {
-  const { isPresenting, session } = useXR();
-  const { gl, camera, scene } = useThree();
-  const { arState, setPresenting } = useAR();
+  const { isPresenting } = useXR();
+  const { camera } = useThree();
   const [interventions, setInterventions] = useState([]);
-  const [draggedIntervention, setDraggedIntervention] = useState(null);
-  const directionalLightRef = useRef();
-  const sessionRef = useRef(null);
+  const [showInstructions, setShowInstructions] = useState(true);
 
   // Set up camera for non-AR mode
-  useEffect(() => {
+  React.useEffect(() => {
     if (!isPresenting) {
       camera.position.z = 3;
     }
   }, [isPresenting, camera]);
 
-  // Initialize AR session
-  useEffect(() => {
-    if (!isPresenting || !session) return;
-
-    sessionRef.current = session;
-    setPresenting(true);
-
-    // Set up camera for AR
-    camera.position.set(0, 0, 0);
-    camera.rotation.set(0, 0, 0);
-
-    // Set up WebGL renderer for AR
-    const renderer = gl.getRenderer();
-    renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.xr.enabled = true;
-
-    // Set up AR session
-    const xrLayer = new window.XRWebGLLayer(session, renderer.getContext());
-    session.updateRenderState({ baseLayer: xrLayer });
-
-    // Handle resize
-    const handleResize = () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-    };
-
-    window.addEventListener('resize', handleResize);
-
-    // Set up light estimation if available
-    if (arState.features?.lightEstimation) {
-      renderer.xr.environmentEstimation = true;
+  // Hide instructions after a delay
+  React.useEffect(() => {
+    if (isPresenting) {
+      const timer = setTimeout(() => setShowInstructions(false), 3000);
+      return () => clearTimeout(timer);
     }
-
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      if (sessionRef.current) {
-        sessionRef.current.updateRenderState({ baseLayer: null });
-      }
-      renderer.xr.enabled = false;
-      renderer.xr.environmentEstimation = false;
-      setPresenting(false);
-    };
-  }, [isPresenting, session, camera, gl, arState.features?.lightEstimation, setPresenting]);
-
-  // Update directional light based on light estimation
-  useFrame((state) => {
-    if (!directionalLightRef.current || !arState.features?.lightEstimation || !session) return;
-
-    const frame = state.gl.xr.getFrame();
-    if (!frame) return;
-
-    const lightEstimate = frame.getLightEstimate();
-    if (lightEstimate) {
-      const { primaryLightDirection, primaryLightIntensity } = lightEstimate;
-      if (primaryLightDirection && primaryLightIntensity) {
-        directionalLightRef.current.position.set(
-          primaryLightDirection.x,
-          primaryLightDirection.y,
-          primaryLightDirection.z
-        );
-        directionalLightRef.current.intensity = primaryLightIntensity;
-      }
-    }
-  });
+  }, [isPresenting]);
 
   const handleReticleClick = useCallback((event) => {
     if (!isPresenting) return;
@@ -179,58 +128,60 @@ export default function ARScene({ selectedType }) {
     const newIntervention = {
       id: Date.now(),
       type: selectedType,
-      position: [position.x, position.y, position.z],
-      metadata: {
-        placedAt: new Date().toISOString(),
-        type: selectedType,
-      }
+      position: [position.x, position.y, position.z]
     };
 
     setInterventions((prev) => [...prev, newIntervention]);
   }, [isPresenting, selectedType]);
 
-  const handleDragStart = useCallback((event) => {
-    const interventionId = event.object.userData.id;
-    setDraggedIntervention(interventionId);
+  const handleRemoveIntervention = useCallback((event) => {
+    const interventionId = event.object.userData?.id;
+    if (interventionId) {
+      setInterventions((prev) => prev.filter(int => int.id !== interventionId));
+    }
   }, []);
-
-  const handleDragEnd = useCallback((event) => {
-    if (!draggedIntervention) return;
-
-    const newPosition = event.object.position.clone();
-    setInterventions((prev) =>
-      prev.map((int) =>
-        int.id === draggedIntervention
-          ? { ...int, position: [newPosition.x, newPosition.y, newPosition.z] }
-          : int
-      )
-    );
-    setDraggedIntervention(null);
-  }, [draggedIntervention]);
 
   return (
     <>
-      <ambientLight intensity={0.5} />
-      {arState.features?.lightEstimation ? (
-        <directionalLight
-          ref={directionalLightRef}
-          position={[0, 1, 0]}
-          intensity={1}
-        />
-      ) : (
-        <pointLight position={[10, 10, 10]} intensity={1} />
-      )}
+      {/* Lighting */}
+      <ambientLight intensity={0.6} />
+      <directionalLight position={[10, 10, 5]} intensity={0.8} />
+      
+      {/* Interventions */}
       {interventions.map((int) => (
         <Intervention 
           key={int.id}
           type={int.type}
           position={int.position}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
+          onRemove={handleRemoveIntervention}
           userData={{ id: int.id }}
         />
       ))}
+      
+      {/* AR Reticle */}
       <Reticle onSelect={handleReticleClick} />
+      
+      {/* Instructions overlay */}
+      {showInstructions && isPresenting && (
+        <div style={{
+          position: 'fixed',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          background: 'rgba(0, 0, 0, 0.8)',
+          color: 'white',
+          padding: '20px',
+          borderRadius: '10px',
+          textAlign: 'center',
+          zIndex: 1000,
+          maxWidth: '300px'
+        }}>
+          <h3>AR Instructions</h3>
+          <p>Point your camera at a flat surface</p>
+          <p>Tap the reticle to place {selectedType}</p>
+          <p>Tap placed objects to remove them</p>
+        </div>
+      )}
     </>
   );
 } 

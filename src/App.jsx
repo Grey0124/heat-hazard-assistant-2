@@ -14,6 +14,8 @@ import ChatbotComponent from './components/chatbot/ChatbotComponent';
 import MitigationPlannerPage from './pages/MitigationPlannerPage';
 import ARModeEntry from './components/ARModeEntry';
 import ARMode from './pages/ar-mode';
+import ARErrorBoundary from './components/ARErrorBoundary';
+import { ARProvider } from './contexts/ARContext';
 
 function App() {
   const { user, loading } = useAuth();
@@ -27,7 +29,7 @@ function App() {
   }
 
   return (
-    <>
+    <ARProvider>
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/heat-map" element={<HeatMapPage />} />
@@ -39,12 +41,19 @@ function App() {
         <Route path="/safe-route" element={<SafeRoutePlanner />} />
         <Route path="/mitigation-planner" element={<MitigationPlannerPage />} />
         <Route path="/ar-mode" element={<ARModeEntry />} />
-        <Route path="/ar-scene" element={<ARMode />} />
+        <Route 
+          path="/ar-scene" 
+          element={
+            <ARErrorBoundary>
+              <ARMode />
+            </ARErrorBoundary>
+          } 
+        />
       </Routes>
       
       {/* ChatbotComponent will appear on all pages */}
       <ChatbotComponent />
-    </>
+    </ARProvider>
   );
 }
 
