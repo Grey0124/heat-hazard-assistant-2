@@ -1,5 +1,4 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
 
 class ARErrorBoundary extends React.Component {
   constructor(props) {
@@ -13,7 +12,36 @@ class ARErrorBoundary extends React.Component {
 
   componentDidCatch(error, errorInfo) {
     console.error('AR Error Boundary caught an error:', error, errorInfo);
+    
+    // Log specific WebGL/XR errors
+    if (error.message && error.message.includes('WebGL')) {
+      console.error('WebGL context error detected');
+    }
+    
+    if (error.message && error.message.includes('XR')) {
+      console.error('XR/WebXR error detected');
+    }
+    
+    if (error.message && error.message.includes('setWebXRManager')) {
+      console.error('WebXR Manager setup error detected');
+    }
   }
+
+  handleRetry = () => {
+    this.setState({ hasError: false, error: null });
+  };
+
+  handleFallback = () => {
+    if (this.props.onFallback) {
+      this.props.onFallback();
+    }
+  };
+
+  handleExit = () => {
+    if (this.props.onExit) {
+      this.props.onExit();
+    }
+  };
 
   render() {
     if (this.state.hasError) {
@@ -24,63 +52,120 @@ class ARErrorBoundary extends React.Component {
           left: 0,
           width: '100%',
           height: '100%',
-          background: '#f5f5f5',
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
           display: 'flex',
           flexDirection: 'column',
-          alignItems: 'center',
           justifyContent: 'center',
-          padding: '20px',
-          textAlign: 'center'
+          alignItems: 'center',
+          color: 'white',
+          zIndex: 9999,
+          padding: '20px'
         }}>
-          <h2 style={{ color: '#f44336', marginBottom: '16px' }}>
-            AR Experience Error
-          </h2>
-          <p style={{ color: '#666', marginBottom: '24px', maxWidth: '400px' }}>
-            There was an issue loading the AR experience. This might be due to WebGL compatibility or device limitations.
-          </p>
-          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'center' }}>
-            <button
-              onClick={() => window.location.reload()}
-              style={{
-                padding: '12px 24px',
-                border: 'none',
-                borderRadius: '8px',
-                background: '#2196f3',
-                color: 'white',
-                cursor: 'pointer',
-                fontSize: '16px'
-              }}
-            >
-              Try Again
-            </button>
-            <button
-              onClick={() => this.props.onFallback()}
-              style={{
-                padding: '12px 24px',
-                border: 'none',
-                borderRadius: '8px',
-                background: '#4caf50',
-                color: 'white',
-                cursor: 'pointer',
-                fontSize: '16px'
-              }}
-            >
-              Use 3D Preview
-            </button>
-            <button
-              onClick={() => this.props.onExit()}
-              style={{
-                padding: '12px 24px',
-                border: 'none',
-                borderRadius: '8px',
-                background: '#f44336',
-                color: 'white',
-                cursor: 'pointer',
-                fontSize: '16px'
-              }}
-            >
-              Exit
-            </button>
+          <div style={{
+            background: 'rgba(0, 0, 0, 0.3)',
+            padding: '30px',
+            borderRadius: '15px',
+            textAlign: 'center',
+            maxWidth: '500px'
+          }}>
+            <h2 style={{ marginBottom: '20px', fontSize: '24px' }}>
+              AR Experience Error
+            </h2>
+            
+            <p style={{ marginBottom: '20px', lineHeight: '1.6' }}>
+              We encountered an issue with the AR experience. This could be due to:
+            </p>
+            
+            <ul style={{ 
+              textAlign: 'left', 
+              marginBottom: '25px',
+              lineHeight: '1.5'
+            }}>
+              <li>WebGL context issues</li>
+              <li>WebXR compatibility problems</li>
+              <li>Device performance limitations</li>
+              <li>Browser security restrictions</li>
+            </ul>
+
+            {this.state.error && (
+              <details style={{ 
+                marginBottom: '20px',
+                textAlign: 'left',
+                background: 'rgba(255, 255, 255, 0.1)',
+                padding: '10px',
+                borderRadius: '5px'
+              }}>
+                <summary style={{ cursor: 'pointer', marginBottom: '5px' }}>
+                  Technical Details
+                </summary>
+                <code style={{ fontSize: '12px', wordBreak: 'break-word' }}>
+                  {this.state.error.toString()}
+                </code>
+              </details>
+            )}
+
+            <div style={{
+              display: 'flex',
+              gap: '15px',
+              justifyContent: 'center',
+              flexWrap: 'wrap'
+            }}>
+              <button
+                onClick={this.handleRetry}
+                style={{
+                  padding: '12px 24px',
+                  background: '#4CAF50',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '16px',
+                  fontWeight: 'bold'
+                }}
+              >
+                🔄 Try Again
+              </button>
+              
+              <button
+                onClick={this.handleFallback}
+                style={{
+                  padding: '12px 24px',
+                  background: '#2196F3',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '16px',
+                  fontWeight: 'bold'
+                }}
+              >
+                📱 Use 3D Preview
+              </button>
+              
+              <button
+                onClick={this.handleExit}
+                style={{
+                  padding: '12px 24px',
+                  background: '#f44336',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '16px',
+                  fontWeight: 'bold'
+                }}
+              >
+                ❌ Exit
+              </button>
+            </div>
+
+            <div style={{
+              marginTop: '20px',
+              fontSize: '14px',
+              opacity: 0.8
+            }}>
+              <p>💡 Tip: Try refreshing the page or using a different browser</p>
+            </div>
           </div>
         </div>
       );

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, Suspense, useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { XR, useXR, useXRHitTest } from '@react-three/xr';
 import { OrbitControls } from '@react-three/drei';
 import { useNavigate } from 'react-router-dom';
 import ARScene from '../components/ARScene';
@@ -24,22 +23,24 @@ function CanvasLoader() {
   );
 }
 
-// AR Button Component
-function ARButton() {
-  const { store, isPresenting } = useXR();
+// Custom AR Button Component with proper WebXR handling
+function CustomARButton({ onARStart }) {
   const [isSupported, setIsSupported] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
+  const [isPresenting, setIsPresenting] = useState(false);
 
   useEffect(() => {
-    const checkSupport = async () => {
+    const checkARSupport = async () => {
       try {
         setIsChecking(true);
         
-        if (navigator.xr) {
+        if ('xr' in navigator) {
           const supported = await navigator.xr.isSessionSupported('immersive-ar');
           setIsSupported(supported);
+          console.log('AR Support check result:', supported);
         } else {
           setIsSupported(false);
+          console.log('WebXR not available in navigator');
         }
       } catch (error) {
         console.error('AR not supported:', error);
@@ -49,16 +50,28 @@ function ARButton() {
       }
     };
 
-    checkSupport();
+    checkARSupport();
   }, []);
 
   const handleClick = async () => {
     if (!isSupported || isPresenting) return;
 
     try {
-      await store.enterXR('immersive-ar');
+      setIsPresenting(true);
+      
+      // Request AR session with proper error handling
+      const session = await navigator.xr.requestSession('immersive-ar', {
+        requiredFeatures: ['hit-test'],
+        optionalFeatures: ['light-estimation', 'anchors']
+      });
+
+      console.log('AR session started successfully');
+      if (onARStart) {
+        onARStart(session);
+      }
     } catch (error) {
       console.error('Failed to start AR session:', error);
+      setIsPresenting(false);
     }
   };
 
@@ -94,9 +107,7 @@ function ARButton() {
 }
 
 // Status Indicator Component
-function StatusIndicator() {
-  const { isPresenting } = useXR();
-  
+function StatusIndicator({ isPresenting }) {
   return (
     <div className="status-indicator">
       <div className={`status-dot ${isPresenting ? 'active' : 'inactive'}`}></div>
@@ -105,62 +116,57 @@ function StatusIndicator() {
   );
 }
 
-// Real AR Scene with geolocation and hit-test (using working reference pattern)
-function ARSceneWithGeolocation({ selectedType, onInterventionAdded, originLat, originLng }) {
-  const reticleRef = useRef();
-  const [interventions, setInterventions] = useState([]);
-  const { isPresenting } = useXR();
+// Enhanced 3D Scene with AR-like functionality
+function EnhancedScene({ selectedType, onInterventionAdded, originLat, originLng, isARMode }) {
+  const [interventions, setInterventions] = useState([
+    { id: 1, type: 'tree', position: [-1, 0, 0] },
+    { id: 2, type: 'roof', position: [1, 0, 0] },
+    { id: 3, type: 'shade', position: [0, 0, -1] }
+  ]);
+  const [selectedObject, setSelectedObject] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState(null);
 
-  // Hit test for AR placement using the working reference pattern
-  useXRHitTest((hitMatrix, hit) => {
-    if (!reticleRef.current || !isPresenting) return;
+  const addIntervention = (position) => {
+    console.log('Adding intervention of type:', selectedType, 'at position:', position);
     
-    hitMatrix.decompose(
-      reticleRef.current.position,
-      reticleRef.current.quaternion,
-      reticleRef.current.scale
-    );
-    reticleRef.current.rotation.set(-Math.PI / 2, 0, 0);
-  });
+    let metadata = {
+      createdAt: new Date().toISOString(),
+      temperature: Math.floor(Math.random() * 10) + 20,
+      effectiveness: Math.floor(Math.random() * 30) + 70
+    };
 
-  // Place intervention with geolocation calculation
-  const placeIntervention = (e) => {
-    if (!isPresenting || !originLat || !originLng) return;
-    
-    const position = e.intersection.object.position.clone();
-    
-    // Convert hit-test position to real-world coordinates
-    const northOffsetMeters = position.z;
-    const eastOffsetMeters = position.x;
-    
-    const deltaLat = northOffsetMeters / 111111;
-    const deltaLng = eastOffsetMeters / (111111 * Math.cos(originLat * Math.PI / 180));
-    
-    const placementLat = originLat + deltaLat;
-    const placementLng = originLng + deltaLng;
-    
-    console.log('Placing intervention:', {
-      type: selectedType,
-      position: [position.x, position.y, position.z],
-      lat: placementLat,
-      lng: placementLng,
-      originLat,
-      originLng
-    });
-
-    const newIntervention = {
-      id: Date.now(),
-      type: selectedType,
-      position: [position.x, position.y, position.z],
-      metadata: {
-        createdAt: new Date().toISOString(),
+    // Add geolocation data if available
+    if (originLat && originLng && isARMode) {
+      const northOffsetMeters = position[2] || 0;
+      const eastOffsetMeters = position[0] || 0;
+      
+      const deltaLat = northOffsetMeters / 111111;
+      const deltaLng = eastOffsetMeters / (111111 * Math.cos(originLat * Math.PI / 180));
+      
+      const placementLat = originLat + deltaLat;
+      const placementLng = originLng + deltaLng;
+      
+      metadata = {
+        ...metadata,
         placementLat,
         placementLng,
         originLat,
         originLng,
         temperature: calculateTemperatureReduction(selectedType, placementLat, placementLng),
         effectiveness: calculateEffectiveness(selectedType, placementLat, placementLng)
-      }
+      };
+    }
+
+    const newIntervention = {
+      id: Date.now(),
+      type: selectedType,
+      position: position || [
+        (Math.random() - 0.5) * 4,
+        0,
+        (Math.random() - 0.5) * 4
+      ],
+      metadata
     };
     
     setInterventions(prev => [...prev, newIntervention]);
@@ -177,10 +183,7 @@ function ARSceneWithGeolocation({ selectedType, onInterventionAdded, originLat, 
       shade: 2.2
     };
     
-    // Adjust based on latitude (more effect near equator)
     const latitudeFactor = 1 + Math.abs(lat) / 90;
-    
-    // Adjust based on longitude (timezone effect)
     const longitudeFactor = 1 + Math.abs(lng) / 180;
     
     return Math.round((baseReduction[type] * latitudeFactor * longitudeFactor) * 10) / 10;
@@ -194,134 +197,15 @@ function ARSceneWithGeolocation({ selectedType, onInterventionAdded, originLat, 
       shade: 72
     };
     
-    // Adjust based on climate zone
     const climateFactor = Math.abs(lat) < 30 ? 1.1 : Math.abs(lat) > 60 ? 0.9 : 1.0;
     
     return Math.round(baseEffectiveness[type] * climateFactor);
-  };
-
-  // Simple intervention models
-  const Tree = ({ position, id, metadata }) => (
-    <group position={position}>
-      <mesh position={[0, 0.25, 0]}>
-        <cylinderGeometry args={[0.05, 0.05, 0.2]} />
-        <meshStandardMaterial color="#8B4513" />
-      </mesh>
-      <mesh position={[0, 0.5, 0]}>
-        <coneGeometry args={[0.2, 0.4, 8]} />
-        <meshStandardMaterial color="#228B22" />
-      </mesh>
-    </group>
-  );
-
-  const Roof = ({ position, id, metadata }) => (
-    <group position={position}>
-      <mesh rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[0.4, 0.4]} />
-        <meshStandardMaterial color="#87CEEB" transparent opacity={0.8} />
-      </mesh>
-      <mesh position={[0, 0.1, 0]} rotation={[0, 0, Math.PI / 4]}>
-        <boxGeometry args={[0.05, 0.2, 0.4]} />
-        <meshStandardMaterial color="#696969" />
-      </mesh>
-    </group>
-  );
-
-  const Shade = ({ position, id, metadata }) => (
-    <group position={position}>
-      <mesh position={[0, 0.3, 0]}>
-        <cylinderGeometry args={[0.15, 0.15, 0.05]} />
-        <meshStandardMaterial color="#F5DEB3" />
-      </mesh>
-      <mesh position={[0, 0.15, 0]}>
-        <cylinderGeometry args={[0.02, 0.02, 0.3]} />
-        <meshStandardMaterial color="#8B4513" />
-      </mesh>
-    </group>
-  );
-
-  const renderIntervention = ({ position, id, type, metadata }) => {
-    switch (type) {
-      case 'tree':
-        return <Tree key={id} position={position} id={id} metadata={metadata} />;
-      case 'roof':
-        return <Roof key={id} position={position} id={id} metadata={metadata} />;
-      case 'shade':
-        return <Shade key={id} position={position} id={id} metadata={metadata} />;
-      default:
-        return <Tree key={id} position={position} id={id} metadata={metadata} />;
-    }
-  };
-
-  return (
-    <>
-      <ambientLight intensity={0.6} />
-      <directionalLight position={[10, 10, 5]} intensity={0.8} />
-      
-      {/* Show placed interventions in AR mode */}
-      {isPresenting &&
-        interventions.map((int) => {
-          return renderIntervention(int);
-        })}
-      
-      {/* AR Reticle for placement */}
-      {isPresenting && (
-        <group onClick={placeIntervention}>
-          <mesh ref={reticleRef} rotation-x={-Math.PI / 2}>
-            <ringGeometry args={[0.1, 0.25, 32]} />
-            <meshStandardMaterial color="white" transparent opacity={0.8} />
-          </mesh>
-        </group>
-      )}
-
-      {/* Show preview in non-AR mode */}
-      {!isPresenting && (
-        <group position={[0, 0, -2]}>
-          {renderIntervention({ position: [0, 0, 0], id: 'preview', type: selectedType })}
-        </group>
-      )}
-    </>
-  );
-}
-
-// Simple 3D Preview Scene (without XR) - preserved for fallback
-function PreviewScene({ selectedType, onInterventionAdded }) {
-  const [interventions, setInterventions] = useState([
-    { id: 1, type: 'tree', position: [-1, 0, 0] },
-    { id: 2, type: 'roof', position: [1, 0, 0] },
-    { id: 3, type: 'shade', position: [0, 0, -1] }
-  ]);
-  const [selectedObject, setSelectedObject] = useState(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState(null);
-
-  const addIntervention = (position) => {
-    console.log('Adding intervention of type:', selectedType, 'at position:', position);
-    const newIntervention = {
-      id: Date.now(),
-      type: selectedType,
-      position: position || [
-        (Math.random() - 0.5) * 4,
-        0,
-        (Math.random() - 0.5) * 4
-      ],
-      metadata: {
-        createdAt: new Date().toISOString(),
-        temperature: Math.floor(Math.random() * 10) + 20, // Random temp 20-30°C
-        effectiveness: Math.floor(Math.random() * 30) + 70 // Random effectiveness 70-100%
-      }
-    };
-    setInterventions(prev => [...prev, newIntervention]);
-    if (onInterventionAdded) {
-      onInterventionAdded(newIntervention);
-    }
   };
 
   // Handle tap/click on scene
   const handleSceneClick = (event) => {
     if (isDragging) return;
     
-    // Get intersection point
     const intersection = event.intersections[0];
     if (intersection) {
       const position = intersection.point;
@@ -377,7 +261,6 @@ function PreviewScene({ selectedType, onInterventionAdded }) {
         <coneGeometry args={[0.2, 0.4, 8]} />
         <meshStandardMaterial color="#228B22" />
       </mesh>
-      {/* Selection indicator */}
       {selectedObject === id && (
         <mesh position={[0, 0.8, 0]}>
           <ringGeometry args={[0.3, 0.35, 32]} />
@@ -403,7 +286,6 @@ function PreviewScene({ selectedType, onInterventionAdded }) {
         <boxGeometry args={[0.05, 0.2, 0.4]} />
         <meshStandardMaterial color="#696969" />
       </mesh>
-      {/* Selection indicator */}
       {selectedObject === id && (
         <mesh position={[0, 0.3, 0]}>
           <ringGeometry args={[0.25, 0.3, 32]} />
@@ -429,7 +311,6 @@ function PreviewScene({ selectedType, onInterventionAdded }) {
         <cylinderGeometry args={[0.02, 0.02, 0.3]} />
         <meshStandardMaterial color="#8B4513" />
       </mesh>
-      {/* Selection indicator */}
       {selectedObject === id && (
         <mesh position={[0, 0.5, 0]}>
           <ringGeometry args={[0.2, 0.25, 32]} />
@@ -456,13 +337,13 @@ function PreviewScene({ selectedType, onInterventionAdded }) {
   const getButtonColor = () => {
     switch (selectedType) {
       case 'tree':
-        return '#228B22'; // Green for tree
+        return '#228B22';
       case 'roof':
-        return '#87CEEB'; // Light blue for roof
+        return '#87CEEB';
       case 'shade':
-        return '#F5DEB3'; // Tan for shade
+        return '#F5DEB3';
       default:
-        return '#2196f3'; // Default blue
+        return '#2196f3';
     }
   };
 
@@ -508,7 +389,7 @@ export default function ARMode() {
   const [originLat, setOriginLat] = useState(null);
   const [originLng, setOriginLng] = useState(null);
   const [locationStatus, setLocationStatus] = useState('Getting location...');
-  const [shouldUseXR, setShouldUseXR] = useState(false);
+  const [isARMode, setIsARMode] = useState(false);
 
   useEffect(() => {
     const checkARSupport = async () => {
@@ -516,23 +397,17 @@ export default function ARMode() {
         setIsChecking(true);
         setHasError(false);
         
-        if (navigator.xr) {
+        if ('xr' in navigator) {
           const supported = await navigator.xr.isSessionSupported('immersive-ar');
           setIsARSupported(supported);
-          setShouldUseXR(supported);
-          if (!supported) {
-            setUseFallback(true);
-          }
+          console.log('AR Support check completed:', supported);
         } else {
           setIsARSupported(false);
-          setShouldUseXR(false);
-          setUseFallback(true);
+          console.log('WebXR not available');
         }
       } catch (err) {
         console.error('Error checking AR support:', err);
         setIsARSupported(false);
-        setShouldUseXR(false);
-        setUseFallback(true);
         setHasError(true);
       } finally {
         setIsChecking(false);
@@ -556,7 +431,6 @@ export default function ARMode() {
         (error) => {
           console.error('Error getting location:', error);
           setLocationStatus('Location unavailable');
-          // Still allow AR to work without location
         },
         {
           enableHighAccuracy: true,
@@ -591,6 +465,11 @@ export default function ARMode() {
 
   const toggleControls = () => {
     setIsControlsMinimized(!isControlsMinimized);
+  };
+
+  const handleARStart = (session) => {
+    console.log('AR session started:', session);
+    setIsARMode(true);
   };
 
   // Error state
@@ -632,7 +511,7 @@ export default function ARMode() {
 
   return (
     <div className="ar-mode-container">
-      {/* Three.js Canvas with conditional XR */}
+      {/* Three.js Canvas with enhanced scene */}
       <ARErrorBoundary onFallback={handleFallback} onExit={handleExit}>
         <Suspense fallback={<CanvasLoader />}>
           <Canvas
@@ -652,31 +531,36 @@ export default function ARMode() {
               height: '100%',
               background: 'transparent'
             }}
-            onCreated={({ gl }) => {
+            onCreated={({ gl, scene, camera }) => {
+              console.log('Canvas created successfully');
               gl.setClearColor(0x000000, 0);
+              
+              // Guard WebGL context loss
+              if (gl.domElement) {
+                gl.domElement.addEventListener("webglcontextlost", (event) => {
+                  event.preventDefault();
+                  console.warn("WebGL context lost. Attempting recovery...");
+                });
+                
+                gl.domElement.addEventListener("webglcontextrestored", () => {
+                  console.log("WebGL context restored");
+                });
+              }
             }}
             onError={(error) => {
               console.error('Canvas error:', error);
               setHasError(true);
             }}
           >
-            {shouldUseXR ? (
-              <XR>
-                <ARSceneWithGeolocation 
-                  selectedType={selectedType} 
-                  onInterventionAdded={handleInterventionAdded}
-                  originLat={originLat}
-                  originLng={originLng}
-                />
-                <ARButton />
-                <StatusIndicator />
-              </XR>
-            ) : (
-              <PreviewScene 
-                selectedType={selectedType} 
-                onInterventionAdded={handleInterventionAdded}
-              />
-            )}
+            <EnhancedScene 
+              selectedType={selectedType} 
+              onInterventionAdded={handleInterventionAdded}
+              originLat={originLat}
+              originLng={originLng}
+              isARMode={isARMode}
+            />
+            <CustomARButton onARStart={handleARStart} />
+            <StatusIndicator isPresenting={isARMode} />
           </Canvas>
         </Suspense>
       </ARErrorBoundary>
