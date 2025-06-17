@@ -23,97 +23,102 @@ function CanvasLoader() {
   );
 }
 
-// Custom AR Button Component with proper WebXR handling
-function CustomARButton({ onARStart }) {
-  const [isSupported, setIsSupported] = useState(false);
-  const [isChecking, setIsChecking] = useState(true);
-  const [isPresenting, setIsPresenting] = useState(false);
+// Real AR Scene with camera access and hit-testing
+function RealARScene({ selectedType, onInterventionAdded, originLat, originLng, isARMode }) {
+  const [interventions, setInterventions] = useState([]);
+  const [selectedObject, setSelectedObject] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState(null);
+  const [arSession, setArSession] = useState(null);
+  const [isARActive, setIsARActive] = useState(false);
+  const [hitTestResults, setHitTestResults] = useState(null);
+  const [reticleVisible, setReticleVisible] = useState(false);
+  const [reticlePosition, setReticlePosition] = useState([0, 0, 0]);
+  const [reticleRotation, setReticleRotation] = useState([0, 0, 0]);
 
+  // AR Session management
   useEffect(() => {
-    const checkARSupport = async () => {
-      try {
-        setIsChecking(true);
-        
-        if ('xr' in navigator) {
-          const supported = await navigator.xr.isSessionSupported('immersive-ar');
-          setIsSupported(supported);
-          console.log('AR Support check result:', supported);
-        } else {
-          setIsSupported(false);
-          console.log('WebXR not available in navigator');
-        }
-      } catch (error) {
-        console.error('AR not supported:', error);
-        setIsSupported(false);
-      } finally {
-        setIsChecking(false);
+    if (isARMode && !arSession) {
+      startARSession();
+    }
+    
+    return () => {
+      if (arSession) {
+        arSession.end();
       }
     };
+  }, [isARMode]);
 
-    checkARSupport();
-  }, []);
-
-  const handleClick = async () => {
-    if (!isSupported || isPresenting) return;
-
+  const startARSession = async () => {
     try {
-      setIsPresenting(true);
-      
-      // Request AR session with proper error handling
+      if (!('xr' in navigator)) {
+        console.error('WebXR not supported');
+        return;
+      }
+
+      const supported = await navigator.xr.isSessionSupported('immersive-ar');
+      if (!supported) {
+        console.error('AR not supported');
+        return;
+      }
+
       const session = await navigator.xr.requestSession('immersive-ar', {
         requiredFeatures: ['hit-test'],
         optionalFeatures: ['light-estimation', 'anchors']
       });
 
-      console.log('AR session started successfully');
-      if (onARStart) {
-        onARStart(session);
-      }
+      setArSession(session);
+      setIsARActive(true);
+
+      // Set up hit testing
+      const viewerSpace = await session.requestReferenceSpace('viewer');
+      const hitTestSource = await session.requestHitTestSource({ space: viewerSpace });
+
+      // Handle frame updates for hit testing
+      session.requestAnimationFrame((time, frame) => {
+        if (frame) {
+          const hitTestResults = frame.getHitTestResults(hitTestSource);
+          if (hitTestResults.length > 0) {
+            const hit = hitTestResults[0];
+            const pose = hit.getPose(viewerSpace);
+            
+            if (pose) {
+              const { transform } = pose;
+              const position = [
+                transform.matrix[12],
+                transform.matrix[13],
+                transform.matrix[14]
+              ];
+              const rotation = [
+                Math.atan2(transform.matrix[6], transform.matrix[10]),
+                Math.asin(-transform.matrix[2]),
+                Math.atan2(transform.matrix[1], transform.matrix[0])
+              ];
+              
+              setReticlePosition(position);
+              setReticleRotation(rotation);
+              setReticleVisible(true);
+              setHitTestResults(hit);
+            }
+          } else {
+            setReticleVisible(false);
+          }
+        }
+        
+        // Continue the AR loop
+        session.requestAnimationFrame(arguments.callee);
+      });
+
+      session.addEventListener('end', () => {
+        setIsARActive(false);
+        setArSession(null);
+        setReticleVisible(false);
+      });
+
     } catch (error) {
       console.error('Failed to start AR session:', error);
-      setIsPresenting(false);
     }
   };
-
-  if (isChecking) {
-    return null; // Don't render anything while checking
-  }
-
-  if (!isSupported) {
-    return null;
-  }
-
-  return (
-    <mesh
-      position={[0, 0.1, -2]}
-      onClick={handleClick}
-    >
-      <boxGeometry args={[0.8, 0.2, 0.3]} />
-      <meshStandardMaterial color={isPresenting ? "#666" : "#2196f3"} />
-    </mesh>
-  );
-}
-
-// Status Indicator Component - moved outside Canvas
-function StatusIndicator({ isPresenting }) {
-  return (
-    <div className="status-indicator">
-      <div className={`status-dot ${isPresenting ? 'active' : 'inactive'}`}></div>
-      <span>{isPresenting ? 'AR Active' : 'AR Ready'}</span>
-    </div>
-  );
-}
-
-// Enhanced 3D Scene with AR-like functionality
-function EnhancedScene({ selectedType, onInterventionAdded, originLat, originLng, isARMode }) {
-  const [interventions, setInterventions] = useState([
-    { id: 1, type: 'tree', position: [-1, 0, 0] },
-    { id: 2, type: 'roof', position: [1, 0, 0] },
-    { id: 3, type: 'shade', position: [0, 0, -1] }
-  ]);
-  const [selectedObject, setSelectedObject] = useState(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState(null);
 
   const addIntervention = (position) => {
     console.log('Adding intervention of type:', selectedType, 'at position:', position);
@@ -149,11 +154,7 @@ function EnhancedScene({ selectedType, onInterventionAdded, originLat, originLng
     const newIntervention = {
       id: Date.now(),
       type: selectedType,
-      position: position || [
-        (Math.random() - 0.5) * 4,
-        0,
-        (Math.random() - 0.5) * 4
-      ],
+      position: position || reticlePosition,
       metadata
     };
     
@@ -194,10 +195,14 @@ function EnhancedScene({ selectedType, onInterventionAdded, originLat, originLng
   const handleSceneClick = (event) => {
     if (isDragging) return;
     
-    const intersection = event.intersections[0];
-    if (intersection) {
-      const position = intersection.point;
-      addIntervention([position.x, position.y, position.z]);
+    if (isARActive && reticleVisible) {
+      addIntervention(reticlePosition);
+    } else {
+      const intersection = event.intersections[0];
+      if (intersection) {
+        const position = intersection.point;
+        addIntervention([position.x, position.y, position.z]);
+      }
     }
   };
 
@@ -321,47 +326,163 @@ function EnhancedScene({ selectedType, onInterventionAdded, originLat, originLng
     }
   };
 
-  // Get button color based on selected type
-  const getButtonColor = () => {
-    switch (selectedType) {
-      case 'tree':
-        return '#228B22';
-      case 'roof':
-        return '#87CEEB';
-      case 'shade':
-        return '#F5DEB3';
-      default:
-        return '#2196f3';
-    }
+  // AR Reticle for placement
+  const ARReticle = () => {
+    if (!reticleVisible || !isARActive) return null;
+    
+    return (
+      <group position={reticlePosition} rotation={reticleRotation}>
+        <mesh rotation={[-Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[0.1, 0.15, 32]} />
+          <meshStandardMaterial color="white" transparent opacity={0.8} />
+        </mesh>
+        <mesh position={[0, 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[0.05, 0.1, 32]} />
+          <meshStandardMaterial color="yellow" transparent opacity={0.6} />
+        </mesh>
+      </group>
+    );
   };
 
   return (
     <>
-      <OrbitControls />
-      <ambientLight intensity={0.6} />
-      <directionalLight position={[10, 10, 5]} intensity={0.8} />
-      
-      {/* Ground plane - clickable for placement */}
-      <mesh 
-        rotation={[-Math.PI / 2, 0, 0]} 
-        position={[0, -0.1, 0]}
-        onClick={handleSceneClick}
-      >
-        <planeGeometry args={[10, 10]} />
-        <meshStandardMaterial color="#f0f0f0" />
-      </mesh>
-      
-      {interventions.map((int) => renderIntervention(int))}
-      
-      {/* Add intervention button - color changes based on selected type */}
-      <mesh 
-        position={[0, 0.1, 2]} 
-        onClick={() => addIntervention()}
-      >
-        <boxGeometry args={[0.3, 0.1, 0.3]} />
-        <meshStandardMaterial color={getButtonColor()} />
-      </mesh>
+      {/* AR Camera Background */}
+      {isARActive && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          background: 'transparent',
+          zIndex: 1
+        }}>
+          {/* Real camera feed will be handled by WebXR */}
+        </div>
+      )}
+
+      {/* AR Scene */}
+      {isARActive ? (
+        <>
+          <ambientLight intensity={0.6} />
+          <directionalLight position={[10, 10, 5]} intensity={0.8} />
+          
+          {/* AR Reticle */}
+          <ARReticle />
+          
+          {/* Placed interventions */}
+          {interventions.map((int) => renderIntervention(int))}
+        </>
+      ) : (
+        <>
+          <OrbitControls />
+          <ambientLight intensity={0.6} />
+          <directionalLight position={[10, 10, 5]} intensity={0.8} />
+          
+          {/* Ground plane - clickable for placement */}
+          <mesh 
+            rotation={[-Math.PI / 2, 0, 0]} 
+            position={[0, -0.1, 0]}
+            onClick={handleSceneClick}
+          >
+            <planeGeometry args={[10, 10]} />
+            <meshStandardMaterial color="#f0f0f0" />
+          </mesh>
+          
+          {interventions.map((int) => renderIntervention(int))}
+          
+          {/* Add intervention button */}
+          <mesh 
+            position={[0, 0.1, 2]} 
+            onClick={() => addIntervention()}
+          >
+            <boxGeometry args={[0.3, 0.1, 0.3]} />
+            <meshStandardMaterial color="#2196f3" />
+          </mesh>
+        </>
+      )}
     </>
+  );
+}
+
+// Custom AR Button Component with proper WebXR handling
+function CustomARButton({ onARStart }) {
+  const [isSupported, setIsSupported] = useState(false);
+  const [isChecking, setIsChecking] = useState(true);
+  const [isPresenting, setIsPresenting] = useState(false);
+
+  useEffect(() => {
+    const checkARSupport = async () => {
+      try {
+        setIsChecking(true);
+        
+        if ('xr' in navigator) {
+          const supported = await navigator.xr.isSessionSupported('immersive-ar');
+          setIsSupported(supported);
+          console.log('AR Support check result:', supported);
+        } else {
+          setIsSupported(false);
+          console.log('WebXR not available in navigator');
+        }
+      } catch (error) {
+        console.error('AR not supported:', error);
+        setIsSupported(false);
+      } finally {
+        setIsChecking(false);
+      }
+    };
+
+    checkARSupport();
+  }, []);
+
+  const handleClick = async () => {
+    if (!isSupported || isPresenting) return;
+
+    try {
+      setIsPresenting(true);
+      
+      // Request AR session with proper error handling
+      const session = await navigator.xr.requestSession('immersive-ar', {
+        requiredFeatures: ['hit-test'],
+        optionalFeatures: ['light-estimation', 'anchors']
+      });
+
+      console.log('AR session started successfully');
+      if (onARStart) {
+        onARStart(session);
+      }
+    } catch (error) {
+      console.error('Failed to start AR session:', error);
+      setIsPresenting(false);
+    }
+  };
+
+  if (isChecking) {
+    return null; // Don't render anything while checking
+  }
+
+  if (!isSupported) {
+    return null;
+  }
+
+  return (
+    <mesh
+      position={[0, 0.1, -2]}
+      onClick={handleClick}
+    >
+      <boxGeometry args={[0.8, 0.2, 0.3]} />
+      <meshStandardMaterial color={isPresenting ? "#666" : "#2196f3"} />
+    </mesh>
+  );
+}
+
+// Status Indicator Component - moved outside Canvas
+function StatusIndicator({ isPresenting }) {
+  return (
+    <div className="status-indicator">
+      <div className={`status-dot ${isPresenting ? 'active' : 'inactive'}`}></div>
+      <span>{isPresenting ? 'AR Active' : 'AR Ready'}</span>
+    </div>
   );
 }
 
@@ -500,7 +621,7 @@ export default function ARMode() {
 
   return (
     <div className="ar-mode-container">
-      {/* Three.js Canvas with enhanced scene */}
+      {/* Three.js Canvas with real AR scene */}
       <ARErrorBoundary onFallback={handleFallback} onExit={handleExit}>
         <Suspense fallback={<CanvasLoader />}>
           <Canvas
@@ -541,7 +662,7 @@ export default function ARMode() {
               setHasError(true);
             }}
           >
-            <EnhancedScene 
+            <RealARScene 
               selectedType={selectedType} 
               onInterventionAdded={handleInterventionAdded}
               originLat={originLat}
@@ -631,6 +752,34 @@ export default function ARMode() {
           <button onClick={handleExit} className="exit-button">
             Exit
           </button>
+        </div>
+      )}
+
+      {/* AR Instructions */}
+      {isARMode && (
+        <div style={{
+          position: 'fixed',
+          bottom: '20px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          background: 'rgba(0, 0, 0, 0.8)',
+          color: 'white',
+          padding: '15px 20px',
+          borderRadius: '10px',
+          fontSize: '14px',
+          textAlign: 'center',
+          zIndex: 1000,
+          maxWidth: '400px'
+        }}>
+          <p style={{ margin: '0 0 10px 0', fontWeight: 'bold' }}>
+            📱 AR Mode Instructions:
+          </p>
+          <p style={{ margin: '0', fontSize: '12px', lineHeight: '1.4' }}>
+            • Point camera at surfaces to see placement reticle<br/>
+            • Tap screen to place interventions in real world<br/>
+            • Move device to explore and place more objects<br/>
+            • Select intervention type from controls above
+          </p>
         </div>
       )}
     </div>
