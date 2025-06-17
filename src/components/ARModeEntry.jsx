@@ -2,21 +2,25 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useAR } from '../contexts/ARContext';
 
 const ARModeEntry = () => {
   const [isARSupported, setIsARSupported] = useState(null);
   const [isChecking, setIsChecking] = useState(true);
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { arState, checkARSupport } = useAR();
 
   useEffect(() => {
     const checkARSupport = async () => {
       try {
         setIsChecking(true);
-        await checkARSupport();
-        setIsARSupported(arState.isSupported);
+        
+        // Simple AR support check - this was working before
+        if (navigator.xr) {
+          const supported = await navigator.xr.isSessionSupported('immersive-ar');
+          setIsARSupported(supported);
+        } else {
+          setIsARSupported(false);
+        }
       } catch (error) {
         console.error('Error checking AR support:', error);
         setIsARSupported(false);
@@ -26,7 +30,7 @@ const ARModeEntry = () => {
     };
 
     checkARSupport();
-  }, [checkARSupport, arState.isSupported]);
+  }, []);
 
   const handleEnterAR = () => {
     navigate('/ar-scene');

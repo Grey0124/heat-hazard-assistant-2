@@ -1,31 +1,134 @@
 import React, { useState, useEffect } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { XR } from '@react-three/xr';
+import { XR, useXR } from '@react-three/xr';
 import { useNavigate } from 'react-router-dom';
 import ARScene from '../components/ARScene';
 import ARFallback from '../components/ARFallback';
-import ARButton from '../components/ARButton';
-import { useAR } from '../contexts/ARContext';
+import ModernARButton from '../components/ModernARButton';
 import '../styles/ARMode.css';
+
+// AR Button Component that uses the XR store
+function ARButtonWrapper({ onError }) {
+  const { store, isPresenting } = useXR();
+  const [isSupported, setIsSupported] = useState(false);
+  const [isChecking, setIsChecking] = useState(true);
+
+  useEffect(() => {
+    const checkSupport = async () => {
+      try {
+        setIsChecking(true);
+        
+        if (navigator.xr) {
+          const supported = await navigator.xr.isSessionSupported('immersive-ar');
+          setIsSupported(supported);
+        } else {
+          setIsSupported(false);
+        }
+      } catch (error) {
+        console.error('AR not supported:', error);
+        setIsSupported(false);
+        if (onError) {
+          onError(error);
+        }
+      } finally {
+        setIsChecking(false);
+      }
+    };
+
+    checkSupport();
+  }, [onError]);
+
+  const handleClick = async () => {
+    if (!isSupported || isPresenting) return;
+
+    try {
+      await store.enterXR('immersive-ar');
+    } catch (error) {
+      console.error('Failed to start AR session:', error);
+      if (onError) {
+        onError(error);
+      }
+    }
+  };
+
+  if (isChecking) {
+    return (
+      <button 
+        className="ar-button" 
+        disabled
+        style={{ opacity: 0.5, cursor: 'not-allowed' }}
+      >
+        Checking AR...
+      </button>
+    );
+  }
+
+  if (!isSupported) {
+    return null;
+  }
+
+  return (
+    <button
+      className="ar-button"
+      onClick={handleClick}
+      disabled={isPresenting}
+      style={{
+        opacity: isPresenting ? 0.5 : 1,
+        cursor: isPresenting ? 'not-allowed' : 'pointer'
+      }}
+    >
+      {isPresenting ? 'AR Active' : 'Start AR Experience'}
+    </button>
+  );
+}
+
+// Status Indicator Component
+function StatusIndicator() {
+  const { isPresenting } = useXR();
+  
+  return (
+    <div className="status-indicator">
+      <div className={`status-dot ${isPresenting ? 'active' : 'inactive'}`}></div>
+      <span>{isPresenting ? 'AR Active' : 'AR Ready'}</span>
+    </div>
+  );
+}
 
 export default function ARMode() {
   const navigate = useNavigate();
-  const { arState, checkARSupport } = useAR();
   const [selectedType, setSelectedType] = useState('tree');
   const [error, setError] = useState(null);
   const [useFallback, setUseFallback] = useState(false);
+  const [isARSupported, setIsARSupported] = useState(null);
+  const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
-    const initAR = async () => {
+    const checkARSupport = async () => {
       try {
-        await checkARSupport();
+        setIsChecking(true);
+        
+        // Simple AR support check - this was working before
+        if (navigator.xr) {
+          const supported = await navigator.xr.isSessionSupported('immersive-ar');
+          setIsARSupported(supported);
+          if (!supported) {
+            setUseFallback(true);
+          }
+        } else {
+          setIsARSupported(false);
+          setUseFallback(true);
+        }
       } catch (err) {
-        setError(err.message);
+        console.error('Error checking AR support:', err);
+        setIsARSupported(false);
         setUseFallback(true);
+      } finally {
+        setIsChecking(false);
       }
     };
-    initAR();
-  }, [checkARSupport]);
+
+    checkARSupport();
+  }, []);
 
   const handleTypeChange = (type) => {
     setSelectedType(type);
@@ -44,12 +147,13 @@ export default function ARMode() {
   };
 
   const handleARError = (error) => {
-    setError(error.message);
+    console.error('AR Error:', error);
+    setError(error.message || 'AR session error');
     setUseFallback(true);
   };
 
   // Loading state
-  if (arState.isChecking && !useFallback) {
+  if (isChecking) {
     return (
       <div className="ar-mode-container">
         <div className="loading-overlay">
@@ -61,7 +165,7 @@ export default function ARMode() {
   }
 
   // Use fallback if AR is not supported or user chooses to
-  if (useFallback || !arState.isSupported) {
+  if (useFallback || !isARSupported) {
     return <ARFallback selectedType={selectedType} />;
   }
 
@@ -117,23 +221,16 @@ export default function ARMode() {
         </XR>
       </Canvas>
 
-      {/* Custom AR Button */}
-      <ARButton
-        className="ar-button"
-        onError={handleARError}
-      >
-        Start AR Experience
-      </ARButton>
+      {/* Modern AR Button */}
+      <ARButtonWrapper onError={handleARError} />
 
       {/* Instructions overlay */}
-      {!arState.isPresenting && (
-        <div className="ar-instructions">
-          <h2>AR Mitigation Planner</h2>
-          <p>Click the AR button to start the AR experience.</p>
-          <p>Point your camera at a flat surface to place interventions.</p>
-          <p>Choose from different types of heat mitigation strategies.</p>
-        </div>
-      )}
+      <div className="ar-instructions">
+        <h2>AR Mitigation Planner</h2>
+        <p>Click the AR button to start the AR experience.</p>
+        <p>Point your camera at a flat surface to place interventions.</p>
+        <p>Choose from different types of heat mitigation strategies.</p>
+      </div>
 
       {/* Intervention type controls */}
       <div className="intervention-controls">
@@ -161,10 +258,7 @@ export default function ARMode() {
       </div>
 
       {/* Status indicator */}
-      <div className="status-indicator">
-        <div className={`status-dot ${arState.isPresenting ? 'active' : 'inactive'}`}></div>
-        <span>{arState.isPresenting ? 'AR Active' : 'AR Ready'}</span>
-      </div>
+      <StatusIndicator />
     </div>
   );
 }

@@ -1,20 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { useThree } from '@react-three/fiber';
 import { useXR } from '@react-three/xr';
-import arSessionManager from '../utils/ARSessionManager';
 
-export default function ARButton({ className, onError, children }) {
+export default function ModernARButton({ className, onError, children }) {
+  const { store, isPresenting } = useXR();
   const [isSupported, setIsSupported] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
-  const { gl } = useThree();
-  const { isPresenting, setIsPresenting } = useXR();
 
   useEffect(() => {
     const checkSupport = async () => {
       try {
         setIsChecking(true);
-        await arSessionManager.checkSupport();
-        setIsSupported(true);
+        
+        if (navigator.xr) {
+          const supported = await navigator.xr.isSessionSupported('immersive-ar');
+          setIsSupported(supported);
+        } else {
+          setIsSupported(false);
+        }
       } catch (error) {
         console.error('AR not supported:', error);
         setIsSupported(false);
@@ -33,25 +35,7 @@ export default function ARButton({ className, onError, children }) {
     if (!isSupported || isPresenting) return;
 
     try {
-      // Set up callbacks
-      arSessionManager.setCallbacks({
-        onSessionStart: (session) => {
-          setIsPresenting(true);
-        },
-        onSessionEnd: () => {
-          setIsPresenting(false);
-        },
-        onError: (error) => {
-          console.error('AR Session Error:', error);
-          setIsPresenting(false);
-          if (onError) {
-            onError(error);
-          }
-        }
-      });
-
-      // Start the session
-      await arSessionManager.startSession(gl.getRenderer());
+      await store.enterXR('immersive-ar');
     } catch (error) {
       console.error('Failed to start AR session:', error);
       if (onError) {

@@ -118,6 +118,8 @@ export default function ARScene({ selectedType }) {
     if (isPresenting) {
       const timer = setTimeout(() => setShowInstructions(false), 3000);
       return () => clearTimeout(timer);
+    } else {
+      setShowInstructions(true);
     }
   }, [isPresenting]);
 

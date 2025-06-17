@@ -21,49 +21,30 @@ export function ARProvider({ children }) {
     try {
       setARState(prev => ({ ...prev, isChecking: true, error: null }));
 
-      // Check if WebXR is available
+      // Simple AR support check - this was working before
       if (!navigator.xr) {
         throw new Error('WebXR not supported in this browser');
       }
 
-      // Check if AR is supported
       const supported = await navigator.xr.isSessionSupported('immersive-ar');
       if (!supported) {
         throw new Error('AR not supported on this device');
       }
 
-      // Try to get a temporary session to check features
-      let tempSession = null;
-      try {
-        tempSession = await navigator.xr.requestSession('immersive-ar', {
-          requiredFeatures: ['hit-test'],
-          optionalFeatures: ['light-estimation', 'anchors', 'dom-overlay']
-        });
-
-        const features = {
-          hitTest: tempSession.enabledFeatures.includes('hit-test'),
-          lightEstimation: tempSession.enabledFeatures.includes('light-estimation'),
-          anchors: tempSession.enabledFeatures.includes('anchors'),
-          domOverlay: tempSession.enabledFeatures.includes('dom-overlay')
-        };
-
-        // End the temporary session
-        await tempSession.end();
-
-        setARState({
-          isSupported: true,
-          isChecking: false,
-          isPresenting: false,
-          session: null,
-          error: null,
-          features
-        });
-      } catch (sessionError) {
-        if (tempSession) {
-          await tempSession.end();
+      // Set supported without trying to create a temporary session
+      setARState({
+        isSupported: true,
+        isChecking: false,
+        isPresenting: false,
+        session: null,
+        error: null,
+        features: {
+          hitTest: true, // Assume basic features are available
+          lightEstimation: false,
+          anchors: false,
+          domOverlay: false
         }
-        throw new Error(`AR session failed: ${sessionError.message}`);
-      }
+      });
     } catch (error) {
       console.error('AR Support Check Error:', error);
       setARState({
