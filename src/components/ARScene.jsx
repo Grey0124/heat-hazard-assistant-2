@@ -77,7 +77,12 @@ export default function ARScene({ selectedType }) {
   useXRHitTest((hitMatrix, hit) => {
     if (!reticleRef.current || !isPresenting) return;
     
-    reticleRef.current.matrix.fromArray(hitMatrix);
+    hitMatrix.decompose(
+      reticleRef.current.position,
+      reticleRef.current.quaternion,
+      reticleRef.current.scale
+    );
+    reticleRef.current.rotation.set(-Math.PI / 2, 0, 0);
     setReticleVisible(true);
   });
 
@@ -85,7 +90,7 @@ export default function ARScene({ selectedType }) {
   const placeIntervention = (e) => {
     if (!isPresenting) return;
     
-    const position = e.object.position.clone();
+    const position = e.intersection.object.position.clone();
     const id = Date.now();
     setInterventions([...interventions, { position, id, type: selectedType }]);
   };

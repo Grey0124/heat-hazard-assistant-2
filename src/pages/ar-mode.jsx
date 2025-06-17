@@ -1,6 +1,6 @@
 import React, { useState, useEffect, Suspense, useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { XR, useXR, Interactive, useXRHitTest } from '@react-three/xr';
+import { XR, useXR, useXRHitTest } from '@react-three/xr';
 import { OrbitControls } from '@react-three/drei';
 import { useNavigate } from 'react-router-dom';
 import ARScene from '../components/ARScene';
@@ -105,26 +105,29 @@ function StatusIndicator() {
   );
 }
 
-// Real AR Scene with geolocation and hit-test
+// Real AR Scene with geolocation and hit-test (using working reference pattern)
 function ARSceneWithGeolocation({ selectedType, onInterventionAdded, originLat, originLng }) {
   const reticleRef = useRef();
   const [interventions, setInterventions] = useState([]);
-  const [reticleVisible, setReticleVisible] = useState(false);
   const { isPresenting } = useXR();
 
-  // Hit test for AR placement
+  // Hit test for AR placement using the working reference pattern
   useXRHitTest((hitMatrix, hit) => {
     if (!reticleRef.current || !isPresenting) return;
     
-    reticleRef.current.matrix.fromArray(hitMatrix);
-    setReticleVisible(true);
+    hitMatrix.decompose(
+      reticleRef.current.position,
+      reticleRef.current.quaternion,
+      reticleRef.current.scale
+    );
+    reticleRef.current.rotation.set(-Math.PI / 2, 0, 0);
   });
 
   // Place intervention with geolocation calculation
   const placeIntervention = (e) => {
     if (!isPresenting || !originLat || !originLng) return;
     
-    const position = e.object.position.clone();
+    const position = e.intersection.object.position.clone();
     
     // Convert hit-test position to real-world coordinates
     const northOffsetMeters = position.z;
@@ -262,7 +265,7 @@ function ARSceneWithGeolocation({ selectedType, onInterventionAdded, originLat, 
         })}
       
       {/* AR Reticle for placement */}
-      {isPresenting && reticleVisible && (
+      {isPresenting && (
         <group onClick={placeIntervention}>
           <mesh ref={reticleRef} rotation-x={-Math.PI / 2}>
             <ringGeometry args={[0.1, 0.25, 32]} />
@@ -639,9 +642,7 @@ export default function ARMode() {
               alpha: true,
               preserveDrawingBuffer: false,
               powerPreference: 'default',
-              failIfMajorPerformanceCaveat: false,
-              stencil: false,
-              depth: true
+              failIfMajorPerformanceCaveat: false
             }}
             style={{
               position: 'fixed',
@@ -653,18 +654,6 @@ export default function ARMode() {
             }}
             onCreated={({ gl }) => {
               gl.setClearColor(0x000000, 0);
-              
-              // Handle WebGL context loss
-              const handleContextLost = () => {
-                console.log('WebGL context lost, attempting recovery...');
-              };
-              
-              const handleContextRestored = () => {
-                console.log('WebGL context restored');
-              };
-              
-              gl.canvas.addEventListener('webglcontextlost', handleContextLost, false);
-              gl.canvas.addEventListener('webglcontextrestored', handleContextRestored, false);
             }}
             onError={(error) => {
               console.error('Canvas error:', error);
