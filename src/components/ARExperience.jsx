@@ -8,11 +8,13 @@ export default function ARExperience({ selectedType, onInterventionAdded, origin
   const cameraRef = useRef(null);
   const sessionRef = useRef(null);
   const hitTestSourceRef = useRef(null);
+  const animationFrameRef = useRef(null);
   const [isARActive, setIsARActive] = useState(false);
   const [interventions, setInterventions] = useState([]);
   const [reticleVisible, setReticleVisible] = useState(false);
   const [reticlePosition, setReticlePosition] = useState(new THREE.Vector3());
   const [isSupported, setIsSupported] = useState(false);
+  const [is3DPreviewActive, setIs3DPreviewActive] = useState(true);
 
   // Check AR support on mount
   useEffect(() => {
@@ -53,10 +55,35 @@ export default function ARExperience({ selectedType, onInterventionAdded, origin
     directionalLight.position.set(10, 10, 5);
     scene.add(directionalLight);
 
+    // Add a ground plane for 3D preview
+    const groundGeometry = new THREE.PlaneGeometry(10, 10);
+    const groundMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0xcccccc, 
+      transparent: true, 
+      opacity: 0.3 
+    });
+    const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -1;
+    scene.add(ground);
+
+    // Position camera for 3D preview
+    camera.position.set(0, 2, 5);
+    camera.lookAt(0, 0, 0);
+
     // Store references
     sceneRef.current = scene;
     cameraRef.current = camera;
     rendererRef.current = renderer;
+
+    // Start 3D preview render loop
+    const animate = () => {
+      if (!isARActive && is3DPreviewActive) {
+        animationFrameRef.current = requestAnimationFrame(animate);
+        renderer.render(scene, camera);
+      }
+    };
+    animate();
 
     // Handle window resize
     const handleResize = () => {
@@ -68,9 +95,12 @@ export default function ARExperience({ selectedType, onInterventionAdded, origin
 
     return () => {
       window.removeEventListener('resize', handleResize);
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
       renderer.dispose();
     };
-  }, []);
+  }, [isARActive, is3DPreviewActive]);
 
   // Start AR session
   const startARSession = async () => {
@@ -87,13 +117,33 @@ export default function ARExperience({ selectedType, onInterventionAdded, origin
 
       sessionRef.current = session;
       setIsARActive(true);
+      setIs3DPreviewActive(false);
 
       // Set up the session
       await rendererRef.current.xr.setSession(session);
 
+      // Try different reference space types
+      let referenceSpace = null;
+      const spaceTypes = ['viewer', 'local', 'local-floor', 'bounded-floor'];
+      
+      for (const spaceType of spaceTypes) {
+        try {
+          referenceSpace = await session.requestReferenceSpace(spaceType);
+          console.log(`Using reference space: ${spaceType}`);
+          break;
+        } catch (error) {
+          console.log(`Reference space ${spaceType} not supported:`, error);
+        }
+      }
+
+      if (!referenceSpace) {
+        console.error('No supported reference space found');
+        endARSession();
+        return;
+      }
+
       // Set up hit testing
-      const viewerSpace = await session.requestReferenceSpace('viewer');
-      const hitTestSource = await session.requestHitTestSource({ space: viewerSpace });
+      const hitTestSource = await session.requestHitTestSource({ space: referenceSpace });
       hitTestSourceRef.current = hitTestSource;
 
       // Set up render loop
@@ -104,7 +154,7 @@ export default function ARExperience({ selectedType, onInterventionAdded, origin
             const hitTestResults = frame.getHitTestResults(hitTestSourceRef.current);
             if (hitTestResults.length > 0) {
               const hit = hitTestResults[0];
-              const pose = hit.getPose(viewerSpace);
+              const pose = hit.getPose(referenceSpace);
               if (pose) {
                 const { transform } = pose;
                 const position = new THREE.Vector3(
@@ -134,6 +184,7 @@ export default function ARExperience({ selectedType, onInterventionAdded, origin
       session.addEventListener('end', () => {
         setIsARActive(false);
         setReticleVisible(false);
+        setIs3DPreviewActive(true);
         sessionRef.current = null;
         hitTestSourceRef.current = null;
       });
@@ -142,6 +193,8 @@ export default function ARExperience({ selectedType, onInterventionAdded, origin
 
     } catch (error) {
       console.error('Failed to start AR session:', error);
+      setIsARActive(false);
+      setIs3DPreviewActive(true);
     }
   };
 
@@ -302,9 +355,13 @@ export default function ARExperience({ selectedType, onInterventionAdded, origin
 
   // Handle tap/click
   const handleCanvasClick = (event) => {
-    if (!isARActive || !reticleVisible) return;
-    
-    addIntervention(reticlePosition);
+    if (isARActive && reticleVisible) {
+      addIntervention(reticlePosition);
+    } else if (!isARActive) {
+      // In 3D preview mode, place at a fixed position
+      const position = new THREE.Vector3(0, 0, 0);
+      addIntervention(position);
+    }
   };
 
   return (
@@ -318,7 +375,7 @@ export default function ARExperience({ selectedType, onInterventionAdded, origin
           left: 0,
           width: '100%',
           height: '100%',
-          background: 'transparent'
+          background: isARActive ? 'transparent' : 'linear-gradient(135deg, #87CEEB 0%, #98FB98 100%)'
         }}
         onClick={handleCanvasClick}
       />
@@ -379,13 +436,13 @@ export default function ARExperience({ selectedType, onInterventionAdded, origin
         fontSize: '14px',
         zIndex: 1000
       }}>
-        <div>AR Status: {isARActive ? 'Active' : 'Inactive'}</div>
+        <div>Mode: {isARActive ? 'AR Active' : '3D Preview'}</div>
         <div>Reticle: {reticleVisible ? 'Visible' : 'Hidden'}</div>
         <div>Objects Placed: {interventions.length}</div>
       </div>
 
-      {/* AR Instructions */}
-      {isARActive && (
+      {/* Instructions */}
+      {isARActive ? (
         <div style={{
           position: 'fixed',
           top: '50%',
@@ -402,6 +459,24 @@ export default function ARExperience({ selectedType, onInterventionAdded, origin
           <h3>AR Mode Active</h3>
           <p>Point your camera at surfaces to see the placement reticle</p>
           <p>Tap the screen to place a {selectedType}</p>
+        </div>
+      ) : (
+        <div style={{
+          position: 'fixed',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          background: 'rgba(0, 0, 0, 0.8)',
+          color: 'white',
+          padding: '20px',
+          borderRadius: '10px',
+          textAlign: 'center',
+          zIndex: 1000,
+          maxWidth: '300px'
+        }}>
+          <h3>3D Preview Mode</h3>
+          <p>Click anywhere to place a {selectedType}</p>
+          <p>Click "Start AR Experience" to use real AR</p>
         </div>
       )}
 

@@ -5,6 +5,7 @@ export default function ARTest() {
   const [isChecking, setIsChecking] = useState(true);
   const [session, setSession] = useState(null);
   const [status, setStatus] = useState('Checking AR support...');
+  const [errorDetails, setErrorDetails] = useState('');
 
   useEffect(() => {
     checkARSupport();
@@ -14,6 +15,7 @@ export default function ARTest() {
     try {
       setIsChecking(true);
       setStatus('Checking AR support...');
+      setErrorDetails('');
 
       if (!('xr' in navigator)) {
         setStatus('WebXR not available in this browser');
@@ -32,6 +34,7 @@ export default function ARTest() {
     } catch (error) {
       console.error('Error checking AR support:', error);
       setStatus(`Error: ${error.message}`);
+      setErrorDetails(error.toString());
       setIsSupported(false);
     } finally {
       setIsChecking(false);
@@ -41,6 +44,7 @@ export default function ARTest() {
   const startAR = async () => {
     try {
       setStatus('Requesting AR session...');
+      setErrorDetails('');
       
       const arSession = await navigator.xr.requestSession('immersive-ar', {
         requiredFeatures: ['hit-test'],
@@ -50,10 +54,30 @@ export default function ARTest() {
       setSession(arSession);
       setStatus('AR session started! Camera should be active.');
 
+      // Test reference spaces
+      const spaceTypes = ['viewer', 'local', 'local-floor', 'bounded-floor'];
+      let supportedSpaces = [];
+      
+      for (const spaceType of spaceTypes) {
+        try {
+          await arSession.requestReferenceSpace(spaceType);
+          supportedSpaces.push(spaceType);
+        } catch (error) {
+          console.log(`Reference space ${spaceType} not supported:`, error);
+        }
+      }
+
+      if (supportedSpaces.length > 0) {
+        setErrorDetails(`Supported reference spaces: ${supportedSpaces.join(', ')}`);
+      } else {
+        setErrorDetails('No reference spaces supported - this may cause issues');
+      }
+
       // Set up session end handler
       arSession.addEventListener('end', () => {
         setSession(null);
         setStatus('AR session ended. Click "Start AR" to begin again.');
+        setErrorDetails('');
       });
 
       console.log('AR session started successfully:', arSession);
@@ -61,6 +85,7 @@ export default function ARTest() {
     } catch (error) {
       console.error('Failed to start AR session:', error);
       setStatus(`Failed to start AR: ${error.message}`);
+      setErrorDetails(error.toString());
     }
   };
 
@@ -90,7 +115,7 @@ export default function ARTest() {
         padding: '30px',
         borderRadius: '15px',
         textAlign: 'center',
-        maxWidth: '500px'
+        maxWidth: '600px'
       }}>
         <h1 style={{ marginBottom: '20px' }}>AR Test</h1>
         
@@ -102,6 +127,18 @@ export default function ARTest() {
         }}>
           <h3>Status:</h3>
           <p>{status}</p>
+          {errorDetails && (
+            <div style={{
+              marginTop: '10px',
+              padding: '10px',
+              background: 'rgba(255, 0, 0, 0.2)',
+              borderRadius: '5px',
+              fontSize: '12px',
+              textAlign: 'left'
+            }}>
+              <strong>Details:</strong> {errorDetails}
+            </div>
+          )}
         </div>
 
         <div style={{
@@ -187,6 +224,15 @@ export default function ARTest() {
             <li>WebXR-compatible browser (Chrome, Safari, Edge)</li>
             <li>AR-capable device (smartphone/tablet)</li>
             <li>Camera permission granted</li>
+            <li>Device supports at least one reference space type</li>
+          </ul>
+          
+          <h4>Common Issues:</h4>
+          <ul style={{ textAlign: 'left' }}>
+            <li><strong>Reference Space Error:</strong> Device doesn't support the requested space type</li>
+            <li><strong>Camera Not Accessing:</strong> Camera permissions denied</li>
+            <li><strong>No AR Support:</strong> Device or browser doesn't support WebXR AR</li>
+            <li><strong>HTTPS Required:</strong> WebXR needs secure context</li>
           </ul>
         </div>
       </div>
