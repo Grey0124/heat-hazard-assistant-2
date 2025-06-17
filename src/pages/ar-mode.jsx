@@ -6,8 +6,8 @@ import ARScene from '../components/ARScene';
 import ARFallback from '../components/ARFallback';
 import '../styles/ARMode.css';
 
-// Simple AR Button Component
-function SimpleARButton() {
+// AR Button Component that must be inside XR context
+function ARButton() {
   const { store, isPresenting } = useXR();
   const [isSupported, setIsSupported] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
@@ -87,6 +87,17 @@ function StatusIndicator() {
   );
 }
 
+// AR Scene with UI Components
+function ARSceneWithUI({ selectedType }) {
+  return (
+    <>
+      <ARScene selectedType={selectedType} />
+      <ARButton />
+      <StatusIndicator />
+    </>
+  );
+}
+
 export default function ARMode() {
   const navigate = useNavigate();
   const [selectedType, setSelectedType] = useState('tree');
@@ -133,10 +144,6 @@ export default function ARMode() {
     navigate('/mitigation-planner');
   };
 
-  const handleUseFallback = () => {
-    setUseFallback(true);
-  };
-
   // Loading state
   if (isChecking) {
     return (
@@ -175,12 +182,9 @@ export default function ARMode() {
         }}
       >
         <XR>
-          <ARScene selectedType={selectedType} />
+          <ARSceneWithUI selectedType={selectedType} />
         </XR>
       </Canvas>
-
-      {/* Simple AR Button */}
-      <SimpleARButton />
 
       {/* Instructions overlay */}
       <div className="ar-instructions">
@@ -214,9 +218,6 @@ export default function ARMode() {
           Exit AR
         </button>
       </div>
-
-      {/* Status indicator */}
-      <StatusIndicator />
     </div>
   );
 }
