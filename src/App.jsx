@@ -16,6 +16,7 @@ import ARModeEntry from './components/ARModeEntry';
 import ARMode from './pages/ar-mode';
 import ARErrorBoundary from './components/ARErrorBoundary';
 import { ARProvider } from './contexts/ARContext';
+import ARTest from './components/ARTest';
 
 function App() {
   const { user, loading } = useAuth();
@@ -49,6 +50,7 @@ function App() {
             </ARErrorBoundary>
           } 
         />
+        <Route path="/ar-test" element={<ARTest />} />
       </Routes>
       
       {/* ChatbotComponent will appear on all pages */}
