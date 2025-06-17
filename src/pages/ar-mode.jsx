@@ -142,48 +142,82 @@ export default function ARMode() {
       />
 
       {/* Location status */}
-      <div className="location-status">
+      <div style={{
+        position: 'fixed',
+        top: '20px',
+        right: '20px',
+        background: 'rgba(0, 0, 0, 0.7)',
+        color: 'white',
+        padding: '8px 12px',
+        borderRadius: '8px',
+        fontSize: '12px',
+        zIndex: 1000,
+        maxWidth: '200px'
+      }}>
         <span>{locationStatus}</span>
       </div>
 
-      {/* Top-left UI overlay */}
-      <div className="top-ui-overlay">
-        <div className="intervention-counter">
-          <h3>Placed Objects: {placedInterventions.length}</h3>
-          <div className="intervention-list">
-            {placedInterventions.map((int, index) => (
-              <div key={int.id} className="intervention-item">
-                <span>{index + 1}. {int.type}</span>
-                <span>Temp: {int.metadata?.temperature}°C</span>
-                <span>Effect: {int.metadata?.effectiveness}%</span>
-                {int.metadata?.placementLat && (
-                  <span>Lat: {int.metadata.placementLat.toFixed(6)}</span>
-                )}
-                {int.metadata?.placementLng && (
-                  <span>Lng: {int.metadata.placementLng.toFixed(6)}</span>
-                )}
-              </div>
-            ))}
+      {/* Top-left UI overlay - only show when controls are visible */}
+      {!isControlsMinimized && (
+        <div style={{
+          position: 'fixed',
+          top: '80px',
+          left: '20px',
+          background: 'rgba(0, 0, 0, 0.8)',
+          color: 'white',
+          padding: '15px',
+          borderRadius: '10px',
+          fontSize: '14px',
+          zIndex: 1000,
+          maxWidth: '300px',
+          maxHeight: '400px',
+          overflowY: 'auto'
+        }}>
+          <h3 style={{ margin: '0 0 10px 0', fontSize: '16px' }}>Placed Objects: {placedInterventions.length}</h3>
+          <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+            {placedInterventions.length === 0 ? (
+              <p style={{ margin: 0, opacity: 0.7 }}>No objects placed yet</p>
+            ) : (
+              placedInterventions.map((int, index) => (
+                <div key={int.id} style={{
+                  marginBottom: '8px',
+                  padding: '8px',
+                  background: 'rgba(255, 255, 255, 0.1)',
+                  borderRadius: '5px',
+                  fontSize: '12px'
+                }}>
+                  <div style={{ fontWeight: 'bold' }}>{index + 1}. {int.type}</div>
+                  <div>Temp: {int.metadata?.temperature}°C</div>
+                  <div>Effect: {int.metadata?.effectiveness}%</div>
+                  {int.metadata?.placementLat && (
+                    <div>Lat: {int.metadata.placementLat.toFixed(6)}</div>
+                  )}
+                  {int.metadata?.placementLng && (
+                    <div>Lng: {int.metadata.placementLng.toFixed(6)}</div>
+                  )}
+                </div>
+              ))
+            )}
           </div>
         </div>
-      </div>
+      )}
 
       {/* Minimize/Maximize button */}
       <button 
-        className="minimize-button"
         onClick={toggleControls}
         style={{
           position: 'fixed',
           top: '20px',
-          right: '20px',
-          zIndex: 1000,
+          right: isControlsMinimized ? '20px' : '240px',
+          zIndex: 1001,
           padding: '8px 12px',
           background: 'rgba(0, 0, 0, 0.7)',
           color: 'white',
           border: 'none',
           borderRadius: '8px',
           cursor: 'pointer',
-          fontSize: '14px'
+          fontSize: '14px',
+          transition: 'right 0.3s ease'
         }}
       >
         {isControlsMinimized ? '📋 Show Controls' : '📋 Hide Controls'}
@@ -191,30 +225,90 @@ export default function ARMode() {
 
       {/* Intervention type controls - collapsible */}
       {!isControlsMinimized && (
-        <div className="intervention-controls">
+        <div style={{
+          position: 'fixed',
+          bottom: '80px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          display: 'flex',
+          gap: '10px',
+          zIndex: 1000,
+          flexWrap: 'wrap',
+          justifyContent: 'center',
+          maxWidth: '90vw'
+        }}>
           <button
-            className={`intervention-button ${selectedType === 'tree' ? 'active' : ''}`}
+            style={{
+              padding: '10px 20px',
+              background: selectedType === 'tree' ? '#4CAF50' : 'rgba(0, 0, 0, 0.7)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '14px',
+              cursor: 'pointer',
+              fontWeight: selectedType === 'tree' ? 'bold' : 'normal'
+            }}
             onClick={() => handleTypeChange('tree')}
           >
             🌳 Tree
           </button>
           <button
-            className={`intervention-button ${selectedType === 'roof' ? 'active' : ''}`}
+            style={{
+              padding: '10px 20px',
+              background: selectedType === 'roof' ? '#2196F3' : 'rgba(0, 0, 0, 0.7)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '14px',
+              cursor: 'pointer',
+              fontWeight: selectedType === 'roof' ? 'bold' : 'normal'
+            }}
             onClick={() => handleTypeChange('roof')}
           >
             🏠 Roof
           </button>
           <button
-            className={`intervention-button ${selectedType === 'shade' ? 'active' : ''}`}
+            style={{
+              padding: '10px 20px',
+              background: selectedType === 'shade' ? '#FF9800' : 'rgba(0, 0, 0, 0.7)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '14px',
+              cursor: 'pointer',
+              fontWeight: selectedType === 'shade' ? 'bold' : 'normal'
+            }}
             onClick={() => handleTypeChange('shade')}
           >
             ☂️ Shade
           </button>
-          <button onClick={handleGoToMap} className="map-button">
-            Go to Map
+          <button 
+            onClick={handleGoToMap} 
+            style={{
+              padding: '10px 20px',
+              background: '#9C27B0',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '14px',
+              cursor: 'pointer'
+            }}
+          >
+            🗺️ Go to Map
           </button>
-          <button onClick={handleExit} className="exit-button">
-            Exit
+          <button 
+            onClick={handleExit} 
+            style={{
+              padding: '10px 20px',
+              background: '#f44336',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '14px',
+              cursor: 'pointer'
+            }}
+          >
+            ❌ Exit
           </button>
         </div>
       )}

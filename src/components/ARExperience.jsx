@@ -15,14 +15,25 @@ export default function ARExperience({ selectedType, onInterventionAdded, origin
   const [reticlePosition, setReticlePosition] = useState(new THREE.Vector3());
   const [isSupported, setIsSupported] = useState(false);
   const [is3DPreviewActive, setIs3DPreviewActive] = useState(true);
+  const [cameraDistance, setCameraDistance] = useState(5);
+  const [isControlsVisible, setIsControlsVisible] = useState(true);
+  const [arError, setArError] = useState('');
 
   // Check AR support on mount
   useEffect(() => {
     const checkARSupport = async () => {
-      if ('xr' in navigator) {
-        const supported = await navigator.xr.isSessionSupported('immersive-ar');
-        setIsSupported(supported);
-        console.log('AR Support:', supported);
+      try {
+        if ('xr' in navigator) {
+          const supported = await navigator.xr.isSessionSupported('immersive-ar');
+          setIsSupported(supported);
+          console.log('AR Support:', supported);
+        } else {
+          setIsSupported(false);
+          console.log('WebXR not available');
+        }
+      } catch (error) {
+        console.error('Error checking AR support:', error);
+        setIsSupported(false);
       }
     };
     checkARSupport();
@@ -56,7 +67,7 @@ export default function ARExperience({ selectedType, onInterventionAdded, origin
     scene.add(directionalLight);
 
     // Add a ground plane for 3D preview
-    const groundGeometry = new THREE.PlaneGeometry(10, 10);
+    const groundGeometry = new THREE.PlaneGeometry(20, 20);
     const groundMaterial = new THREE.MeshStandardMaterial({ 
       color: 0xcccccc, 
       transparent: true, 
@@ -67,8 +78,13 @@ export default function ARExperience({ selectedType, onInterventionAdded, origin
     ground.position.y = -1;
     scene.add(ground);
 
+    // Add grid helper for better orientation
+    const gridHelper = new THREE.GridHelper(20, 20, 0x888888, 0xcccccc);
+    gridHelper.position.y = -0.99;
+    scene.add(gridHelper);
+
     // Position camera for 3D preview
-    camera.position.set(0, 2, 5);
+    camera.position.set(0, 2, cameraDistance);
     camera.lookAt(0, 0, 0);
 
     // Store references
@@ -100,20 +116,51 @@ export default function ARExperience({ selectedType, onInterventionAdded, origin
       }
       renderer.dispose();
     };
-  }, [isARActive, is3DPreviewActive]);
+  }, [isARActive, is3DPreviewActive, cameraDistance]);
 
-  // Start AR session
+  // Update camera position when distance changes
+  useEffect(() => {
+    if (cameraRef.current && !isARActive) {
+      cameraRef.current.position.z = cameraDistance;
+      cameraRef.current.lookAt(0, 0, 0);
+    }
+  }, [cameraDistance, isARActive]);
+
+  // Start AR session with multiple fallback methods
   const startARSession = async () => {
     try {
+      setArError('');
       if (!isSupported) {
-        console.error('AR not supported');
+        setArError('AR not supported on this device');
         return;
       }
 
-      const session = await navigator.xr.requestSession('immersive-ar', {
-        requiredFeatures: ['hit-test'],
-        optionalFeatures: ['light-estimation', 'anchors']
-      });
+      // Method 1: Try with hit-test feature
+      let session = null;
+      try {
+        session = await navigator.xr.requestSession('immersive-ar', {
+          requiredFeatures: ['hit-test'],
+          optionalFeatures: ['light-estimation', 'anchors']
+        });
+      } catch (error) {
+        console.log('Hit-test AR failed, trying without required features:', error);
+        
+        // Method 2: Try without required features
+        try {
+          session = await navigator.xr.requestSession('immersive-ar', {
+            optionalFeatures: ['hit-test', 'light-estimation', 'anchors']
+          });
+        } catch (error2) {
+          console.log('Basic AR failed, trying immersive-vr:', error2);
+          
+          // Method 3: Try immersive-vr as fallback
+          try {
+            session = await navigator.xr.requestSession('immersive-vr');
+          } catch (error3) {
+            throw new Error('All AR/VR session types failed');
+          }
+        }
+      }
 
       sessionRef.current = session;
       setIsARActive(true);
@@ -137,19 +184,22 @@ export default function ARExperience({ selectedType, onInterventionAdded, origin
       }
 
       if (!referenceSpace) {
-        console.error('No supported reference space found');
-        endARSession();
-        return;
+        console.log('No reference space supported, continuing without hit-test');
+        // Continue without hit-test if no reference space is supported
+      } else {
+        // Set up hit testing if reference space is available
+        try {
+          const hitTestSource = await session.requestHitTestSource({ space: referenceSpace });
+          hitTestSourceRef.current = hitTestSource;
+        } catch (error) {
+          console.log('Hit-test source creation failed:', error);
+        }
       }
-
-      // Set up hit testing
-      const hitTestSource = await session.requestHitTestSource({ space: referenceSpace });
-      hitTestSourceRef.current = hitTestSource;
 
       // Set up render loop
       const renderLoop = (time, frame) => {
         if (frame) {
-          // Handle hit testing
+          // Handle hit testing if available
           if (hitTestSourceRef.current) {
             const hitTestResults = frame.getHitTestResults(hitTestSourceRef.current);
             if (hitTestResults.length > 0) {
@@ -187,12 +237,14 @@ export default function ARExperience({ selectedType, onInterventionAdded, origin
         setIs3DPreviewActive(true);
         sessionRef.current = null;
         hitTestSourceRef.current = null;
+        setArError('');
       });
 
       console.log('AR session started successfully');
 
     } catch (error) {
       console.error('Failed to start AR session:', error);
+      setArError(`AR failed: ${error.message}`);
       setIsARActive(false);
       setIs3DPreviewActive(true);
     }
@@ -364,6 +416,15 @@ export default function ARExperience({ selectedType, onInterventionAdded, origin
     }
   };
 
+  // Handle zoom controls
+  const handleZoomIn = () => {
+    setCameraDistance(prev => Math.max(1, prev - 1));
+  };
+
+  const handleZoomOut = () => {
+    setCameraDistance(prev => Math.min(20, prev + 1));
+  };
+
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
       {/* AR Canvas */}
@@ -379,6 +440,26 @@ export default function ARExperience({ selectedType, onInterventionAdded, origin
         }}
         onClick={handleCanvasClick}
       />
+
+      {/* Error Display */}
+      {arError && (
+        <div style={{
+          position: 'fixed',
+          top: '20px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          background: 'rgba(255, 0, 0, 0.9)',
+          color: 'white',
+          padding: '10px 20px',
+          borderRadius: '8px',
+          fontSize: '14px',
+          zIndex: 2000,
+          maxWidth: '80%',
+          textAlign: 'center'
+        }}>
+          {arError}
+        </div>
+      )}
 
       {/* AR Controls */}
       <div style={{
@@ -424,7 +505,52 @@ export default function ARExperience({ selectedType, onInterventionAdded, origin
         )}
       </div>
 
-      {/* AR Status */}
+      {/* 3D Preview Zoom Controls */}
+      {!isARActive && (
+        <div style={{
+          position: 'fixed',
+          right: '20px',
+          top: '50%',
+          transform: 'translateY(-50%)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '10px',
+          zIndex: 1000
+        }}>
+          <button
+            onClick={handleZoomIn}
+            style={{
+              width: '50px',
+              height: '50px',
+              background: 'rgba(0, 0, 0, 0.7)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '50%',
+              fontSize: '20px',
+              cursor: 'pointer'
+            }}
+          >
+            +
+          </button>
+          <button
+            onClick={handleZoomOut}
+            style={{
+              width: '50px',
+              height: '50px',
+              background: 'rgba(0, 0, 0, 0.7)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '50%',
+              fontSize: '20px',
+              cursor: 'pointer'
+            }}
+          >
+            −
+          </button>
+        </div>
+      )}
+
+      {/* Status Display */}
       <div style={{
         position: 'fixed',
         top: '20px',
@@ -438,7 +564,8 @@ export default function ARExperience({ selectedType, onInterventionAdded, origin
       }}>
         <div>Mode: {isARActive ? 'AR Active' : '3D Preview'}</div>
         <div>Reticle: {reticleVisible ? 'Visible' : 'Hidden'}</div>
-        <div>Objects Placed: {interventions.length}</div>
+        <div>Objects: {interventions.length}</div>
+        {!isARActive && <div>Zoom: {cameraDistance.toFixed(1)}x</div>}
       </div>
 
       {/* Instructions */}
@@ -476,6 +603,7 @@ export default function ARExperience({ selectedType, onInterventionAdded, origin
         }}>
           <h3>3D Preview Mode</h3>
           <p>Click anywhere to place a {selectedType}</p>
+          <p>Use + and − buttons to zoom</p>
           <p>Click "Start AR Experience" to use real AR</p>
         </div>
       )}
