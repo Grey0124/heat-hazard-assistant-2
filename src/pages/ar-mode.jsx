@@ -1,6 +1,6 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { XR, useXR } from '@react-three/xr';
+import { OrbitControls } from '@react-three/drei';
 import { useNavigate } from 'react-router-dom';
 import ARScene from '../components/ARScene';
 import ARFallback from '../components/ARFallback';
@@ -23,94 +23,102 @@ function CanvasLoader() {
   );
 }
 
-// AR Button Component that must be inside XR context
-function ARButton() {
-  const { store, isPresenting } = useXR();
-  const [isSupported, setIsSupported] = useState(false);
-  const [isChecking, setIsChecking] = useState(true);
+// Simple 3D Preview Scene (without XR)
+function PreviewScene({ selectedType }) {
+  const [interventions, setInterventions] = useState([
+    { id: 1, type: 'tree', position: [-1, 0, 0] },
+    { id: 2, type: 'roof', position: [1, 0, 0] },
+    { id: 3, type: 'shade', position: [0, 0, -1] }
+  ]);
 
-  useEffect(() => {
-    const checkSupport = async () => {
-      try {
-        setIsChecking(true);
-        
-        if (navigator.xr) {
-          const supported = await navigator.xr.isSessionSupported('immersive-ar');
-          setIsSupported(supported);
-        } else {
-          setIsSupported(false);
-        }
-      } catch (error) {
-        console.error('AR not supported:', error);
-        setIsSupported(false);
-      } finally {
-        setIsChecking(false);
-      }
+  const addIntervention = () => {
+    const newIntervention = {
+      id: Date.now(),
+      type: selectedType,
+      position: [
+        (Math.random() - 0.5) * 4,
+        0,
+        (Math.random() - 0.5) * 4
+      ]
     };
+    setInterventions(prev => [...prev, newIntervention]);
+  };
 
-    checkSupport();
-  }, []);
+  // Simple intervention models
+  const Tree = ({ position }) => (
+    <group position={position}>
+      <mesh position={[0, 0.25, 0]}>
+        <cylinderGeometry args={[0.05, 0.05, 0.2]} />
+        <meshStandardMaterial color="#8B4513" />
+      </mesh>
+      <mesh position={[0, 0.5, 0]}>
+        <coneGeometry args={[0.2, 0.4, 8]} />
+        <meshStandardMaterial color="#228B22" />
+      </mesh>
+    </group>
+  );
 
-  const handleClick = async () => {
-    if (!isSupported || isPresenting) return;
+  const Roof = ({ position }) => (
+    <group position={position}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[0.4, 0.4]} />
+        <meshStandardMaterial color="#87CEEB" transparent opacity={0.8} />
+      </mesh>
+      <mesh position={[0, 0.1, 0]} rotation={[0, 0, Math.PI / 4]}>
+        <boxGeometry args={[0.05, 0.2, 0.4]} />
+        <meshStandardMaterial color="#696969" />
+      </mesh>
+    </group>
+  );
 
-    try {
-      await store.enterXR('immersive-ar');
-    } catch (error) {
-      console.error('Failed to start AR session:', error);
+  const Shade = ({ position }) => (
+    <group position={position}>
+      <mesh position={[0, 0.3, 0]}>
+        <cylinderGeometry args={[0.15, 0.15, 0.05]} />
+        <meshStandardMaterial color="#F5DEB3" />
+      </mesh>
+      <mesh position={[0, 0.15, 0]}>
+        <cylinderGeometry args={[0.02, 0.02, 0.3]} />
+        <meshStandardMaterial color="#8B4513" />
+      </mesh>
+    </group>
+  );
+
+  const renderIntervention = ({ position, id, type }) => {
+    switch (type) {
+      case 'tree':
+        return <Tree key={id} position={position} />;
+      case 'roof':
+        return <Roof key={id} position={position} />;
+      case 'shade':
+        return <Shade key={id} position={position} />;
+      default:
+        return <Tree key={id} position={position} />;
     }
   };
 
-  if (isChecking) {
-    return (
-      <button 
-        className="ar-button" 
-        disabled
-        style={{ opacity: 0.5, cursor: 'not-allowed' }}
-      >
-        Checking AR...
-      </button>
-    );
-  }
-
-  if (!isSupported) {
-    return null;
-  }
-
-  return (
-    <button
-      className="ar-button"
-      onClick={handleClick}
-      disabled={isPresenting}
-      style={{
-        opacity: isPresenting ? 0.5 : 1,
-        cursor: isPresenting ? 'not-allowed' : 'pointer'
-      }}
-    >
-      {isPresenting ? 'AR Active' : 'Start AR Experience'}
-    </button>
-  );
-}
-
-// Status Indicator Component
-function StatusIndicator() {
-  const { isPresenting } = useXR();
-  
-  return (
-    <div className="status-indicator">
-      <div className={`status-dot ${isPresenting ? 'active' : 'inactive'}`}></div>
-      <span>{isPresenting ? 'AR Active' : 'AR Ready'}</span>
-    </div>
-  );
-}
-
-// AR Scene with UI Components
-function ARSceneWithUI({ selectedType }) {
   return (
     <>
-      <ARScene selectedType={selectedType} />
-      <ARButton />
-      <StatusIndicator />
+      <OrbitControls />
+      <ambientLight intensity={0.6} />
+      <directionalLight position={[10, 10, 5]} intensity={0.8} />
+      
+      {/* Ground plane */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.1, 0]}>
+        <planeGeometry args={[10, 10]} />
+        <meshStandardMaterial color="#f0f0f0" />
+      </mesh>
+      
+      {interventions.map((int) => renderIntervention(int))}
+      
+      {/* Add intervention button */}
+      <mesh 
+        position={[0, 0.1, 2]} 
+        onClick={addIntervention}
+      >
+        <boxGeometry args={[0.3, 0.1, 0.3]} />
+        <meshStandardMaterial color="#2196f3" />
+      </mesh>
     </>
   );
 }
@@ -207,16 +215,15 @@ export default function ARMode() {
 
   return (
     <div className="ar-mode-container">
-      {/* Three.js Canvas with error boundary */}
+      {/* Three.js Canvas with simple preview scene */}
       <ARErrorBoundary onFallback={handleFallback} onExit={handleExit}>
         <Suspense fallback={<CanvasLoader />}>
           <Canvas
-            camera={{ position: [0, 0, 3], fov: 75 }}
+            camera={{ position: [3, 2, 3], fov: 75 }}
             gl={{ 
               antialias: true,
               alpha: true,
-              preserveDrawingBuffer: true,
-              powerPreference: 'default'
+              preserveDrawingBuffer: true
             }}
             style={{
               position: 'fixed',
@@ -224,24 +231,19 @@ export default function ARMode() {
               left: 0,
               width: '100%',
               height: '100%',
-              background: 'transparent'
-            }}
-            onCreated={({ gl }) => {
-              gl.setClearColor(0x000000, 0);
+              background: '#87CEEB'
             }}
           >
-            <XR>
-              <ARSceneWithUI selectedType={selectedType} />
-            </XR>
+            <PreviewScene selectedType={selectedType} />
           </Canvas>
         </Suspense>
       </ARErrorBoundary>
 
       {/* Instructions overlay */}
       <div className="ar-instructions">
-        <h2>AR Mitigation Planner</h2>
-        <p>Click the AR button to start the AR experience.</p>
-        <p>Point your camera at a flat surface to place interventions.</p>
+        <h2>3D Mitigation Planner</h2>
+        <p>Click on the blue cube to add interventions.</p>
+        <p>Use your mouse to rotate and zoom the view.</p>
         <p>Choose from different types of heat mitigation strategies.</p>
       </div>
 
@@ -265,8 +267,11 @@ export default function ARMode() {
         >
           ☂️ Shade
         </button>
+        <button onClick={handleGoToMap} className="map-button">
+          Go to Map
+        </button>
         <button onClick={handleExit} className="exit-button">
-          Exit AR
+          Exit
         </button>
       </div>
     </div>
