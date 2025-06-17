@@ -8,6 +8,64 @@
   overflow: hidden;
 }
 
+/* Top-left UI overlay */
+.top-ui-overlay {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  z-index: 100;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  max-width: 300px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.intervention-counter h3 {
+  margin: 0 0 12px;
+  color: #333;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.intervention-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.intervention-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  background: rgba(33, 150, 243, 0.1);
+  border-radius: 6px;
+  border-left: 3px solid #2196f3;
+  font-size: 12px;
+}
+
+.intervention-item span {
+  color: #666;
+}
+
+.intervention-item span:first-child {
+  font-weight: 600;
+  color: #333;
+}
+
+/* Minimize button */
+.minimize-button {
+  transition: all 0.2s;
+}
+
+.minimize-button:hover {
+  background: rgba(0, 0, 0, 0.8) !important;
+  transform: scale(1.05);
+}
+
 .ar-button {
   position: fixed;
   bottom: 20px;
@@ -77,6 +135,7 @@
   flex-wrap: wrap;
   justify-content: center;
   max-width: 90vw;
+  transition: all 0.3s ease;
 }
 
 .intervention-button {
@@ -234,6 +293,20 @@
 
 /* Responsive design */
 @media (max-width: 768px) {
+  .top-ui-overlay {
+    max-width: 250px;
+    padding: 12px;
+  }
+  
+  .intervention-counter h3 {
+    font-size: 16px;
+  }
+  
+  .intervention-item {
+    font-size: 11px;
+    padding: 6px;
+  }
+  
   .intervention-controls {
     bottom: 100px;
     padding: 12px;
