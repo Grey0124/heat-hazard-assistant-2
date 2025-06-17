@@ -505,6 +505,7 @@ export default function ARMode() {
   const [originLat, setOriginLat] = useState(null);
   const [originLng, setOriginLng] = useState(null);
   const [locationStatus, setLocationStatus] = useState('Getting location...');
+  const [shouldUseXR, setShouldUseXR] = useState(false);
 
   useEffect(() => {
     const checkARSupport = async () => {
@@ -515,16 +516,19 @@ export default function ARMode() {
         if (navigator.xr) {
           const supported = await navigator.xr.isSessionSupported('immersive-ar');
           setIsARSupported(supported);
+          setShouldUseXR(supported);
           if (!supported) {
             setUseFallback(true);
           }
         } else {
           setIsARSupported(false);
+          setShouldUseXR(false);
           setUseFallback(true);
         }
       } catch (err) {
         console.error('Error checking AR support:', err);
         setIsARSupported(false);
+        setShouldUseXR(false);
         setUseFallback(true);
         setHasError(true);
       } finally {
@@ -625,7 +629,7 @@ export default function ARMode() {
 
   return (
     <div className="ar-mode-container">
-      {/* Three.js Canvas with AR and preview modes */}
+      {/* Three.js Canvas with conditional XR */}
       <ARErrorBoundary onFallback={handleFallback} onExit={handleExit}>
         <Suspense fallback={<CanvasLoader />}>
           <Canvas
@@ -667,16 +671,23 @@ export default function ARMode() {
               setHasError(true);
             }}
           >
-            <XR>
-              <ARSceneWithGeolocation 
+            {shouldUseXR ? (
+              <XR>
+                <ARSceneWithGeolocation 
+                  selectedType={selectedType} 
+                  onInterventionAdded={handleInterventionAdded}
+                  originLat={originLat}
+                  originLng={originLng}
+                />
+                <ARButton />
+                <StatusIndicator />
+              </XR>
+            ) : (
+              <PreviewScene 
                 selectedType={selectedType} 
                 onInterventionAdded={handleInterventionAdded}
-                originLat={originLat}
-                originLng={originLng}
               />
-              <ARButton />
-              <StatusIndicator />
-            </XR>
+            )}
           </Canvas>
         </Suspense>
       </ARErrorBoundary>
