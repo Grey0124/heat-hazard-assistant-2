@@ -18,7 +18,7 @@ function CanvasLoader() {
       color: 'white',
       fontSize: '18px'
     }}>
-      Loading AR Experience...
+      Loading 3D Experience...
     </div>
   );
 }
@@ -222,8 +222,8 @@ export default function ARMode() {
             camera={{ position: [3, 2, 3], fov: 75 }}
             gl={{ 
               antialias: true,
-              alpha: true,
-              preserveDrawingBuffer: true
+              alpha: false,
+              preserveDrawingBuffer: false
             }}
             style={{
               position: 'fixed',
@@ -238,14 +238,6 @@ export default function ARMode() {
           </Canvas>
         </Suspense>
       </ARErrorBoundary>
-
-      {/* Instructions overlay */}
-      <div className="ar-instructions">
-        <h2>3D Mitigation Planner</h2>
-        <p>Click on the blue cube to add interventions.</p>
-        <p>Use your mouse to rotate and zoom the view.</p>
-        <p>Choose from different types of heat mitigation strategies.</p>
-      </div>
 
       {/* Intervention type controls */}
       <div className="intervention-controls">
