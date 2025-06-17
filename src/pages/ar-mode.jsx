@@ -633,7 +633,11 @@ export default function ARMode() {
             gl={{ 
               antialias: true,
               alpha: true,
-              preserveDrawingBuffer: true
+              preserveDrawingBuffer: false,
+              powerPreference: 'default',
+              failIfMajorPerformanceCaveat: false,
+              stencil: false,
+              depth: true
             }}
             style={{
               position: 'fixed',
@@ -642,6 +646,25 @@ export default function ARMode() {
               width: '100%',
               height: '100%',
               background: 'transparent'
+            }}
+            onCreated={({ gl }) => {
+              gl.setClearColor(0x000000, 0);
+              
+              // Handle WebGL context loss
+              const handleContextLost = () => {
+                console.log('WebGL context lost, attempting recovery...');
+              };
+              
+              const handleContextRestored = () => {
+                console.log('WebGL context restored');
+              };
+              
+              gl.canvas.addEventListener('webglcontextlost', handleContextLost, false);
+              gl.canvas.addEventListener('webglcontextrestored', handleContextRestored, false);
+            }}
+            onError={(error) => {
+              console.error('Canvas error:', error);
+              setHasError(true);
             }}
           >
             <XR>
