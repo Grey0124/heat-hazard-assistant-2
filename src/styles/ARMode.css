@@ -331,4 +331,19 @@
   .ar-instructions p {
     font-size: 14px;
   }
+}
+
+/* Location status */
+.location-status {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
 } 

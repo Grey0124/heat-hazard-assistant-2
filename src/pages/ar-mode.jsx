@@ -1,5 +1,6 @@
 import React, { useState, useEffect, Suspense, useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
+import { XR, useXR, Interactive, useXRHitTest } from '@react-three/xr';
 import { OrbitControls } from '@react-three/drei';
 import { useNavigate } from 'react-router-dom';
 import ARScene from '../components/ARScene';
@@ -18,12 +19,269 @@ function CanvasLoader() {
       color: 'white',
       fontSize: '18px'
     }}>
-      Loading 3D Experience...
+      Loading AR Experience...
     </div>
   );
 }
 
-// Simple 3D Preview Scene with tap detection and object management
+// AR Button Component
+function ARButton() {
+  const { store, isPresenting } = useXR();
+  const [isSupported, setIsSupported] = useState(false);
+  const [isChecking, setIsChecking] = useState(true);
+
+  useEffect(() => {
+    const checkSupport = async () => {
+      try {
+        setIsChecking(true);
+        
+        if (navigator.xr) {
+          const supported = await navigator.xr.isSessionSupported('immersive-ar');
+          setIsSupported(supported);
+        } else {
+          setIsSupported(false);
+        }
+      } catch (error) {
+        console.error('AR not supported:', error);
+        setIsSupported(false);
+      } finally {
+        setIsChecking(false);
+      }
+    };
+
+    checkSupport();
+  }, []);
+
+  const handleClick = async () => {
+    if (!isSupported || isPresenting) return;
+
+    try {
+      await store.enterXR('immersive-ar');
+    } catch (error) {
+      console.error('Failed to start AR session:', error);
+    }
+  };
+
+  if (isChecking) {
+    return (
+      <button 
+        className="ar-button" 
+        disabled
+        style={{ opacity: 0.5, cursor: 'not-allowed' }}
+      >
+        Checking AR...
+      </button>
+    );
+  }
+
+  if (!isSupported) {
+    return null;
+  }
+
+  return (
+    <button
+      className="ar-button"
+      onClick={handleClick}
+      disabled={isPresenting}
+      style={{
+        opacity: isPresenting ? 0.5 : 1,
+        cursor: isPresenting ? 'not-allowed' : 'pointer'
+      }}
+    >
+      {isPresenting ? 'AR Active' : 'Start AR Experience'}
+    </button>
+  );
+}
+
+// Status Indicator Component
+function StatusIndicator() {
+  const { isPresenting } = useXR();
+  
+  return (
+    <div className="status-indicator">
+      <div className={`status-dot ${isPresenting ? 'active' : 'inactive'}`}></div>
+      <span>{isPresenting ? 'AR Active' : 'AR Ready'}</span>
+    </div>
+  );
+}
+
+// Real AR Scene with geolocation and hit-test
+function ARSceneWithGeolocation({ selectedType, onInterventionAdded, originLat, originLng }) {
+  const reticleRef = useRef();
+  const [interventions, setInterventions] = useState([]);
+  const [reticleVisible, setReticleVisible] = useState(false);
+  const { isPresenting } = useXR();
+
+  // Hit test for AR placement
+  useXRHitTest((hitMatrix, hit) => {
+    if (!reticleRef.current || !isPresenting) return;
+    
+    reticleRef.current.matrix.fromArray(hitMatrix);
+    setReticleVisible(true);
+  });
+
+  // Place intervention with geolocation calculation
+  const placeIntervention = (e) => {
+    if (!isPresenting || !originLat || !originLng) return;
+    
+    const position = e.object.position.clone();
+    
+    // Convert hit-test position to real-world coordinates
+    const northOffsetMeters = position.z;
+    const eastOffsetMeters = position.x;
+    
+    const deltaLat = northOffsetMeters / 111111;
+    const deltaLng = eastOffsetMeters / (111111 * Math.cos(originLat * Math.PI / 180));
+    
+    const placementLat = originLat + deltaLat;
+    const placementLng = originLng + deltaLng;
+    
+    console.log('Placing intervention:', {
+      type: selectedType,
+      position: [position.x, position.y, position.z],
+      lat: placementLat,
+      lng: placementLng,
+      originLat,
+      originLng
+    });
+
+    const newIntervention = {
+      id: Date.now(),
+      type: selectedType,
+      position: [position.x, position.y, position.z],
+      metadata: {
+        createdAt: new Date().toISOString(),
+        placementLat,
+        placementLng,
+        originLat,
+        originLng,
+        temperature: calculateTemperatureReduction(selectedType, placementLat, placementLng),
+        effectiveness: calculateEffectiveness(selectedType, placementLat, placementLng)
+      }
+    };
+    
+    setInterventions(prev => [...prev, newIntervention]);
+    if (onInterventionAdded) {
+      onInterventionAdded(newIntervention);
+    }
+  };
+
+  // Calculate temperature reduction based on location and type
+  const calculateTemperatureReduction = (type, lat, lng) => {
+    const baseReduction = {
+      tree: 3.5,
+      roof: 2.8,
+      shade: 2.2
+    };
+    
+    // Adjust based on latitude (more effect near equator)
+    const latitudeFactor = 1 + Math.abs(lat) / 90;
+    
+    // Adjust based on longitude (timezone effect)
+    const longitudeFactor = 1 + Math.abs(lng) / 180;
+    
+    return Math.round((baseReduction[type] * latitudeFactor * longitudeFactor) * 10) / 10;
+  };
+
+  // Calculate effectiveness based on location and type
+  const calculateEffectiveness = (type, lat, lng) => {
+    const baseEffectiveness = {
+      tree: 85,
+      roof: 78,
+      shade: 72
+    };
+    
+    // Adjust based on climate zone
+    const climateFactor = Math.abs(lat) < 30 ? 1.1 : Math.abs(lat) > 60 ? 0.9 : 1.0;
+    
+    return Math.round(baseEffectiveness[type] * climateFactor);
+  };
+
+  // Simple intervention models
+  const Tree = ({ position, id, metadata }) => (
+    <group position={position}>
+      <mesh position={[0, 0.25, 0]}>
+        <cylinderGeometry args={[0.05, 0.05, 0.2]} />
+        <meshStandardMaterial color="#8B4513" />
+      </mesh>
+      <mesh position={[0, 0.5, 0]}>
+        <coneGeometry args={[0.2, 0.4, 8]} />
+        <meshStandardMaterial color="#228B22" />
+      </mesh>
+    </group>
+  );
+
+  const Roof = ({ position, id, metadata }) => (
+    <group position={position}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[0.4, 0.4]} />
+        <meshStandardMaterial color="#87CEEB" transparent opacity={0.8} />
+      </mesh>
+      <mesh position={[0, 0.1, 0]} rotation={[0, 0, Math.PI / 4]}>
+        <boxGeometry args={[0.05, 0.2, 0.4]} />
+        <meshStandardMaterial color="#696969" />
+      </mesh>
+    </group>
+  );
+
+  const Shade = ({ position, id, metadata }) => (
+    <group position={position}>
+      <mesh position={[0, 0.3, 0]}>
+        <cylinderGeometry args={[0.15, 0.15, 0.05]} />
+        <meshStandardMaterial color="#F5DEB3" />
+      </mesh>
+      <mesh position={[0, 0.15, 0]}>
+        <cylinderGeometry args={[0.02, 0.02, 0.3]} />
+        <meshStandardMaterial color="#8B4513" />
+      </mesh>
+    </group>
+  );
+
+  const renderIntervention = ({ position, id, type, metadata }) => {
+    switch (type) {
+      case 'tree':
+        return <Tree key={id} position={position} id={id} metadata={metadata} />;
+      case 'roof':
+        return <Roof key={id} position={position} id={id} metadata={metadata} />;
+      case 'shade':
+        return <Shade key={id} position={position} id={id} metadata={metadata} />;
+      default:
+        return <Tree key={id} position={position} id={id} metadata={metadata} />;
+    }
+  };
+
+  return (
+    <>
+      <ambientLight intensity={0.6} />
+      <directionalLight position={[10, 10, 5]} intensity={0.8} />
+      
+      {/* Show placed interventions in AR mode */}
+      {isPresenting &&
+        interventions.map((int) => {
+          return renderIntervention(int);
+        })}
+      
+      {/* AR Reticle for placement */}
+      {isPresenting && reticleVisible && (
+        <group onClick={placeIntervention}>
+          <mesh ref={reticleRef} rotation-x={-Math.PI / 2}>
+            <ringGeometry args={[0.1, 0.25, 32]} />
+            <meshStandardMaterial color="white" transparent opacity={0.8} />
+          </mesh>
+        </group>
+      )}
+
+      {/* Show preview in non-AR mode */}
+      {!isPresenting && (
+        <group position={[0, 0, -2]}>
+          {renderIntervention({ position: [0, 0, 0], id: 'preview', type: selectedType })}
+        </group>
+      )}
+    </>
+  );
+}
+
+// Simple 3D Preview Scene (without XR) - preserved for fallback
 function PreviewScene({ selectedType, onInterventionAdded }) {
   const [interventions, setInterventions] = useState([
     { id: 1, type: 'tree', position: [-1, 0, 0] },
@@ -244,6 +502,9 @@ export default function ARMode() {
   const [hasError, setHasError] = useState(false);
   const [isControlsMinimized, setIsControlsMinimized] = useState(false);
   const [placedInterventions, setPlacedInterventions] = useState([]);
+  const [originLat, setOriginLat] = useState(null);
+  const [originLng, setOriginLng] = useState(null);
+  const [locationStatus, setLocationStatus] = useState('Getting location...');
 
   useEffect(() => {
     const checkARSupport = async () => {
@@ -272,6 +533,33 @@ export default function ARMode() {
     };
 
     checkARSupport();
+  }, []);
+
+  // Get user location on component mount
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          setOriginLat(latitude);
+          setOriginLng(longitude);
+          setLocationStatus(`Location: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+          console.log('User location obtained:', { latitude, longitude });
+        },
+        (error) => {
+          console.error('Error getting location:', error);
+          setLocationStatus('Location unavailable');
+          // Still allow AR to work without location
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 60000
+        }
+      );
+    } else {
+      setLocationStatus('Geolocation not supported');
+    }
   }, []);
 
   const handleTypeChange = (type) => {
@@ -337,15 +625,15 @@ export default function ARMode() {
 
   return (
     <div className="ar-mode-container">
-      {/* Three.js Canvas with simple preview scene */}
+      {/* Three.js Canvas with AR and preview modes */}
       <ARErrorBoundary onFallback={handleFallback} onExit={handleExit}>
         <Suspense fallback={<CanvasLoader />}>
           <Canvas
             camera={{ position: [3, 2, 3], fov: 75 }}
             gl={{ 
               antialias: true,
-              alpha: false,
-              preserveDrawingBuffer: false
+              alpha: true,
+              preserveDrawingBuffer: true
             }}
             style={{
               position: 'fixed',
@@ -353,16 +641,27 @@ export default function ARMode() {
               left: 0,
               width: '100%',
               height: '100%',
-              background: '#87CEEB'
+              background: 'transparent'
             }}
           >
-            <PreviewScene 
-              selectedType={selectedType} 
-              onInterventionAdded={handleInterventionAdded}
-            />
+            <XR>
+              <ARSceneWithGeolocation 
+                selectedType={selectedType} 
+                onInterventionAdded={handleInterventionAdded}
+                originLat={originLat}
+                originLng={originLng}
+              />
+              <ARButton />
+              <StatusIndicator />
+            </XR>
           </Canvas>
         </Suspense>
       </ARErrorBoundary>
+
+      {/* Location status */}
+      <div className="location-status">
+        <span>{locationStatus}</span>
+      </div>
 
       {/* Top-left UI overlay */}
       <div className="top-ui-overlay">
@@ -374,6 +673,12 @@ export default function ARMode() {
                 <span>{index + 1}. {int.type}</span>
                 <span>Temp: {int.metadata?.temperature}°C</span>
                 <span>Effect: {int.metadata?.effectiveness}%</span>
+                {int.metadata?.placementLat && (
+                  <span>Lat: {int.metadata.placementLat.toFixed(6)}</span>
+                )}
+                {int.metadata?.placementLng && (
+                  <span>Lng: {int.metadata.placementLng.toFixed(6)}</span>
+                )}
               </div>
             ))}
           </div>
