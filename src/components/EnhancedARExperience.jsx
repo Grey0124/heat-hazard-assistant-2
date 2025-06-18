@@ -5,8 +5,9 @@ import {
   OrbitControls,
   Float
 } from '@react-three/drei';
-import { XR, useXR, useXRHitTest, createXRStore, ARButton } from '@react-three/xr';
+import { XR, useXR, useXRHitTest, createXRStore } from '@react-three/xr';
 import * as THREE from 'three';
+import ARButton from './ARButton';
 
 // Create XR store
 const xrStore = createXRStore();

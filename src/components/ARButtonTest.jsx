@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { ARButton, XR } from '@react-three/xr';
+import { XR } from '@react-three/xr';
 import * as THREE from 'three';
+import ARButton from './ARButton';
 
 export default function ARButtonTest() {
   const [sessionActive, setSessionActive] = useState(false);
@@ -104,7 +105,9 @@ export default function ARButtonTest() {
           onUnsupported={handleUnsupported}
           onSessionStart={handleSessionStart}
           onSessionEnd={handleSessionEnd}
-        />
+        >
+          Start AR Test
+        </ARButton>
       </div>
 
       {/* Instructions */}
@@ -123,7 +126,7 @@ export default function ARButtonTest() {
         pointerEvents: 'none'
       }}>
         <h3>AR Button Test</h3>
-        <p>This is a simple test of the ARButton component.</p>
+        <p>This is a simple test of the AR session.</p>
         <p>Click the AR button to start an AR session.</p>
         <p>You should see the camera feed and a red cube.</p>
       </div>
