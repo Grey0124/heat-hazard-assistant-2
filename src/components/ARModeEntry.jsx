@@ -36,6 +36,10 @@ const ARModeEntry = () => {
     navigate('/ar-scene');
   };
 
+  const handleEnterEnhancedAR = () => {
+    navigate('/enhanced-ar');
+  };
+
   const handleGoToMap = () => {
     navigate('/mitigation-planner');
   };
@@ -58,7 +62,7 @@ const ARModeEntry = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-100 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full">
+      <div className="bg-white rounded-lg shadow-lg p-8 max-w-lg w-full">
         <div className="text-center mb-6">
           <div className="text-4xl mb-4">🌍</div>
           <h1 className="text-2xl font-bold text-gray-800 mb-2">
@@ -97,12 +101,32 @@ const ARModeEntry = () => {
               </ul>
             </div>
 
-            <button
-              onClick={handleEnterAR}
-              className="w-full bg-amber-600 hover:bg-amber-700 text-white font-semibold py-4 px-6 rounded-lg transition duration-300 text-lg"
-            >
-              {t('ar.enterButton', '🚀 Enter AR Experience')}
-            </button>
+            <div className="space-y-3">
+              <button
+                onClick={handleEnterEnhancedAR}
+                className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold py-4 px-6 rounded-lg transition duration-300 text-lg shadow-lg"
+              >
+                🚀 Enhanced AR Experience (Recommended)
+              </button>
+              
+              <button
+                onClick={handleEnterAR}
+                className="w-full bg-amber-600 hover:bg-amber-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-300"
+              >
+                📱 Classic AR Experience
+              </button>
+            </div>
+
+            <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+              <h4 className="font-semibold text-purple-800 mb-1 text-sm">Enhanced Features:</h4>
+              <ul className="text-purple-700 text-xs space-y-1">
+                <li>• Better 3D preview with orbit controls</li>
+                <li>• Collapsible UI panels</li>
+                <li>• Improved object placement</li>
+                <li>• Real-time statistics</li>
+                <li>• Enhanced visual effects</li>
+              </ul>
+            </div>
           </div>
         ) : (
           <div className="space-y-6">

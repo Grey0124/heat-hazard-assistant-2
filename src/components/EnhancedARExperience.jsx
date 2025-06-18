@@ -1,0 +1,624 @@
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { 
+  Environment,
+  OrbitControls,
+  Float
+} from '@react-three/drei';
+import { XR, useXR, useXRHitTest } from '@react-three/xr';
+import * as THREE from 'three';
+
+// AR Intervention Object Component
+function ARIntervention({ type, position, metadata, onRemove }) {
+  const meshRef = useRef();
+  const [hovered, setHovered] = useState(false);
+
+  useFrame((state) => {
+    if (meshRef.current) {
+      // Gentle floating animation
+      meshRef.current.position.y = position.y + Math.sin(state.clock.elapsedTime * 2) * 0.05;
+      meshRef.current.rotation.y = state.clock.elapsedTime * 0.5;
+    }
+  });
+
+  const getInterventionGeometry = () => {
+    switch (type) {
+      case 'tree':
+        return (
+          <group>
+            {/* Tree trunk */}
+            <mesh position={[0, 0.1, 0]}>
+              <cylinderGeometry args={[0.05, 0.05, 0.2]} />
+              <meshStandardMaterial color="#8B4513" />
+            </mesh>
+            {/* Tree foliage */}
+            <mesh position={[0, 0.4, 0]}>
+              <coneGeometry args={[0.2, 0.4, 8]} />
+              <meshStandardMaterial color="#228B22" />
+            </mesh>
+          </group>
+        );
+      
+      case 'roof':
+        return (
+          <group>
+            {/* Roof base */}
+            <mesh rotation={[-Math.PI / 2, 0, 0]}>
+              <planeGeometry args={[0.4, 0.4]} />
+              <meshStandardMaterial 
+                color="#87CEEB" 
+                transparent 
+                opacity={0.8}
+                side={THREE.DoubleSide}
+              />
+            </mesh>
+            {/* Roof structure */}
+            <mesh position={[0, 0.1, 0]} rotation={[0, 0, Math.PI / 4]}>
+              <boxGeometry args={[0.05, 0.2, 0.4]} />
+              <meshStandardMaterial color="#696969" />
+            </mesh>
+          </group>
+        );
+      
+      case 'shade':
+        return (
+          <group>
+            {/* Shade top */}
+            <mesh position={[0, 0.3, 0]}>
+              <cylinderGeometry args={[0.15, 0.15, 0.05]} />
+              <meshStandardMaterial color="#F5DEB3" />
+            </mesh>
+            {/* Shade pole */}
+            <mesh position={[0, 0.15, 0]}>
+              <cylinderGeometry args={[0.02, 0.02, 0.3]} />
+              <meshStandardMaterial color="#8B4513" />
+            </mesh>
+          </group>
+        );
+      
+      default:
+        return (
+          <mesh>
+            <boxGeometry args={[0.1, 0.1, 0.1]} />
+            <meshStandardMaterial color="orange" />
+          </mesh>
+        );
+    }
+  };
+
+  return (
+    <group 
+      ref={meshRef} 
+      position={position}
+      scale={hovered ? 1.1 : 1}
+      onClick={() => onRemove && onRemove()}
+      onPointerOver={() => setHovered(true)}
+      onPointerOut={() => setHovered(false)}
+    >
+      {getInterventionGeometry()}
+      
+      {/* Info label - simplified without Text3D */}
+      {hovered && (
+        <Float speed={2} rotationIntensity={0.5} floatIntensity={0.5}>
+          <mesh position={[0, 0.6, 0]}>
+            <boxGeometry args={[0.3, 0.1, 0.05]} />
+            <meshStandardMaterial color="white" />
+          </mesh>
+        </Float>
+      )}
+    </group>
+  );
+}
+
+// AR Hit Test Component using useXRHitTest
+function ARHitTest({ onHitTest, children }) {
+  const [hitTestPosition, setHitTestPosition] = useState(new THREE.Vector3(0, 0, 0));
+
+  useXRHitTest((hitTestResults) => {
+    if (hitTestResults.length > 0) {
+      const hit = hitTestResults[0];
+      const position = new THREE.Vector3();
+      hit.getWorldMatrix(position);
+      setHitTestPosition(position);
+      onHitTest(position);
+    }
+  });
+
+  return children;
+}
+
+// 3D Preview Scene Component
+function PreviewScene({ interventions, onAddIntervention, selectedType }) {
+  const { camera } = useThree();
+  const [previewPosition, setPreviewPosition] = useState(new THREE.Vector3(0, 0, 0));
+
+  // Handle click to add intervention in preview mode
+  const handleCanvasClick = useCallback((event) => {
+    event.stopPropagation();
+    const point = new THREE.Vector3();
+    const mouse = new THREE.Vector2();
+    
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    
+    // Simple raycasting to ground plane
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(mouse, camera);
+    
+    const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+    raycaster.ray.intersectPlane(groundPlane, point);
+    
+    if (point) {
+      setPreviewPosition(point);
+      onAddIntervention(point);
+    }
+  }, [camera, onAddIntervention]);
+
+  useEffect(() => {
+    const canvas = document.querySelector('canvas');
+    if (canvas) {
+      canvas.addEventListener('click', handleCanvasClick);
+      return () => canvas.removeEventListener('click', handleCanvasClick);
+    }
+  }, [handleCanvasClick]);
+
+  return (
+    <>
+      {/* Ground plane */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.1, 0]}>
+        <planeGeometry args={[20, 20]} />
+        <meshStandardMaterial 
+          color="#cccccc" 
+          transparent 
+          opacity={0.3}
+        />
+      </mesh>
+      
+      {/* Grid helper */}
+      <gridHelper args={[20, 20, 0x888888, 0xcccccc]} position={[0, -0.09, 0]} />
+      
+      {/* Preview reticle */}
+      <mesh position={previewPosition}>
+        <ringGeometry args={[0.05, 0.08, 32]} />
+        <meshStandardMaterial color="yellow" side={THREE.DoubleSide} />
+      </mesh>
+      
+      {/* Existing interventions */}
+      {interventions.map((intervention) => (
+        <ARIntervention
+          key={intervention.id}
+          type={intervention.type}
+          position={intervention.position}
+          metadata={intervention.metadata}
+        />
+      ))}
+    </>
+  );
+}
+
+// AR Scene Component
+function ARScene({ interventions, onAddIntervention, selectedType }) {
+  const { session } = useXR();
+  const [hitTestPosition, setHitTestPosition] = useState(new THREE.Vector3(0, 0, 0));
+  const [showReticle, setShowReticle] = useState(false);
+
+  const handleHitTest = useCallback((position) => {
+    setHitTestPosition(position);
+    setShowReticle(true);
+  }, []);
+
+  const handleTap = useCallback(() => {
+    if (showReticle) {
+      onAddIntervention(hitTestPosition.clone());
+    }
+  }, [showReticle, hitTestPosition, onAddIntervention]);
+
+  useEffect(() => {
+    const handleClick = () => handleTap();
+    if (session) {
+      session.addEventListener('select', handleClick);
+      return () => session.removeEventListener('select', handleClick);
+    }
+  }, [session, handleTap]);
+
+  return (
+    <>
+      <ARHitTest onHitTest={handleHitTest}>
+        {/* AR Reticle */}
+        {showReticle && (
+          <mesh position={hitTestPosition}>
+            <ringGeometry args={[0.05, 0.08, 32]} />
+            <meshStandardMaterial color="yellow" side={THREE.DoubleSide} />
+          </mesh>
+        )}
+      </ARHitTest>
+      
+      {/* Existing interventions */}
+      {interventions.map((intervention) => (
+        <ARIntervention
+          key={intervention.id}
+          type={intervention.type}
+          position={intervention.position}
+          metadata={intervention.metadata}
+        />
+      ))}
+    </>
+  );
+}
+
+// Custom AR Button Component
+function ARButton({ sessionInit, onUnsupported, onSessionStart, onSessionEnd }) {
+  const [isSupported, setIsSupported] = useState(false);
+  const [isChecking, setIsChecking] = useState(true);
+
+  useEffect(() => {
+    const checkSupport = async () => {
+      try {
+        if ('xr' in navigator) {
+          const supported = await navigator.xr.isSessionSupported('immersive-ar');
+          setIsSupported(supported);
+        } else {
+          setIsSupported(false);
+        }
+      } catch (error) {
+        console.error('AR support check failed:', error);
+        setIsSupported(false);
+      } finally {
+        setIsChecking(false);
+      }
+    };
+    checkSupport();
+  }, []);
+
+  const handleClick = async () => {
+    if (!isSupported) {
+      onUnsupported?.();
+      return;
+    }
+
+    try {
+      const session = await navigator.xr.requestSession('immersive-ar', sessionInit);
+      onSessionStart?.(session);
+      
+      session.addEventListener('end', () => {
+        onSessionEnd?.();
+      });
+    } catch (error) {
+      console.error('Failed to start AR session:', error);
+      onUnsupported?.();
+    }
+  };
+
+  if (isChecking) {
+    return (
+      <button
+        style={{
+          padding: '12px 24px',
+          background: '#ccc',
+          color: 'white',
+          border: 'none',
+          borderRadius: '8px',
+          fontSize: '16px',
+          cursor: 'not-allowed'
+        }}
+        disabled
+      >
+        Checking AR Support...
+      </button>
+    );
+  }
+
+  return (
+    <button
+      onClick={handleClick}
+      style={{
+        padding: '12px 24px',
+        background: isSupported ? '#2196f3' : '#ccc',
+        color: 'white',
+        border: 'none',
+        borderRadius: '8px',
+        fontSize: '16px',
+        cursor: isSupported ? 'pointer' : 'not-allowed'
+      }}
+      disabled={!isSupported}
+    >
+      {isSupported ? 'Start AR Experience' : 'AR Not Supported'}
+    </button>
+  );
+}
+
+// Main Enhanced AR Experience Component
+export default function EnhancedARExperience({ 
+  selectedType, 
+  onInterventionAdded, 
+  originLat, 
+  originLng 
+}) {
+  const [interventions, setInterventions] = useState([]);
+  const [isARActive, setIsARActive] = useState(false);
+  const [cameraDistance, setCameraDistance] = useState(5);
+  const [isControlsVisible, setIsControlsVisible] = useState(true);
+  const [isInfoPanelVisible, setIsInfoPanelVisible] = useState(true);
+  const [isTypeSelectorVisible, setIsTypeSelectorVisible] = useState(true);
+
+  const addIntervention = useCallback((position) => {
+    const metadata = {
+      createdAt: new Date().toISOString(),
+      temperature: Math.floor(Math.random() * 10) + 20,
+      effectiveness: Math.floor(Math.random() * 30) + 70
+    };
+
+    // Add geolocation data if available
+    if (originLat && originLng) {
+      const northOffsetMeters = position.z || 0;
+      const eastOffsetMeters = position.x || 0;
+      
+      const deltaLat = northOffsetMeters / 111111;
+      const deltaLng = eastOffsetMeters / (111111 * Math.cos(originLat * Math.PI / 180));
+      
+      const placementLat = originLat + deltaLat;
+      const placementLng = originLng + deltaLng;
+      
+      metadata.placementLat = placementLat;
+      metadata.placementLng = placementLng;
+      metadata.originLat = originLat;
+      metadata.originLng = originLng;
+    }
+
+    const newIntervention = {
+      id: Date.now(),
+      type: selectedType,
+      position: position.clone(),
+      metadata
+    };
+    
+    setInterventions(prev => [...prev, newIntervention]);
+    
+    if (onInterventionAdded) {
+      onInterventionAdded(newIntervention);
+    }
+  }, [selectedType, originLat, originLng, onInterventionAdded]);
+
+  const removeIntervention = useCallback((id) => {
+    setInterventions(prev => prev.filter(int => int.id !== id));
+  }, []);
+
+  const handleZoomIn = () => setCameraDistance(prev => Math.max(1, prev - 1));
+  const handleZoomOut = () => setCameraDistance(prev => Math.min(20, prev + 1));
+
+  return (
+    <div style={{ position: 'relative', width: '100%', height: '100vh' }}>
+      {/* AR Canvas */}
+      <Canvas
+        camera={{ 
+          position: [0, 2, cameraDistance], 
+          near: 0.01, 
+          far: 1000,
+          fov: 75
+        }}
+        gl={{ 
+          antialias: true, 
+          alpha: true,
+          preserveDrawingBuffer: false
+        }}
+        onCreated={({ gl }) => {
+          gl.xr.enabled = true;
+        }}
+      >
+        <XR>
+          {/* Lighting */}
+          <ambientLight intensity={0.6} />
+          <directionalLight 
+            position={[10, 10, 5]} 
+            intensity={0.8}
+            castShadow
+          />
+          
+          {/* Environment */}
+          <Environment preset="sunset" />
+          
+          {/* Controls for 3D preview */}
+          {!isARActive && (
+            <OrbitControls 
+              enablePan={true}
+              enableZoom={true}
+              enableRotate={true}
+              maxDistance={20}
+              minDistance={1}
+            />
+          )}
+          
+          {/* Scene content */}
+          {isARActive ? (
+            <ARScene 
+              interventions={interventions}
+              onAddIntervention={addIntervention}
+              selectedType={selectedType}
+            />
+          ) : (
+            <PreviewScene 
+              interventions={interventions}
+              onAddIntervention={addIntervention}
+              selectedType={selectedType}
+            />
+          )}
+        </XR>
+      </Canvas>
+
+      {/* AR Button */}
+      <div style={{
+        position: 'fixed',
+        bottom: '20px',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        zIndex: 1000
+      }}>
+        <ARButton 
+          sessionInit={{
+            requiredFeatures: ['hit-test'],
+            optionalFeatures: ['dom-overlay', 'local-floor'],
+            domOverlay: { root: document.body }
+          }}
+          onUnsupported={() => {
+            console.log('AR not supported');
+          }}
+          onSessionStart={() => {
+            setIsARActive(true);
+          }}
+          onSessionEnd={() => {
+            setIsARActive(false);
+          }}
+        />
+      </div>
+
+      {/* Zoom Controls (3D Preview only) */}
+      {!isARActive && (
+        <div style={{
+          position: 'fixed',
+          right: '20px',
+          top: '50%',
+          transform: 'translateY(-50%)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '10px',
+          zIndex: 1000
+        }}>
+          <button
+            onClick={handleZoomIn}
+            style={{
+              width: '50px',
+              height: '50px',
+              background: 'rgba(0, 0, 0, 0.7)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '50%',
+              fontSize: '20px',
+              cursor: 'pointer'
+            }}
+          >
+            +
+          </button>
+          <button
+            onClick={handleZoomOut}
+            style={{
+              width: '50px',
+              height: '50px',
+              background: 'rgba(0, 0, 0, 0.7)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '50%',
+              fontSize: '20px',
+              cursor: 'pointer'
+            }}
+          >
+            −
+          </button>
+        </div>
+      )}
+
+      {/* Info Panel - Collapsible */}
+      {isInfoPanelVisible && (
+        <div style={{
+          position: 'fixed',
+          top: '20px',
+          left: '20px',
+          background: 'rgba(0, 0, 0, 0.8)',
+          color: 'white',
+          padding: '15px',
+          borderRadius: '10px',
+          fontSize: '14px',
+          zIndex: 1000,
+          maxWidth: '300px',
+          maxHeight: '400px',
+          overflowY: 'auto'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+            <h3 style={{ margin: 0, fontSize: '16px' }}>Scene Info</h3>
+            <button
+              onClick={() => setIsInfoPanelVisible(false)}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'white',
+                cursor: 'pointer',
+                fontSize: '18px'
+              }}
+            >
+              ×
+            </button>
+          </div>
+          <div>Mode: {isARActive ? 'AR Active' : '3D Preview'}</div>
+          <div>Objects: {interventions.length}</div>
+          <div>Selected: {selectedType}</div>
+          {!isARActive && <div>Zoom: {cameraDistance.toFixed(1)}x</div>}
+          
+          {/* Interventions list */}
+          {interventions.length > 0 && (
+            <div style={{ marginTop: '10px' }}>
+              <h4 style={{ margin: '0 0 5px 0' }}>Placed Objects:</h4>
+              <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                {interventions.map((int, index) => (
+                  <div key={int.id} style={{
+                    marginBottom: '5px',
+                    padding: '5px',
+                    background: 'rgba(255, 255, 255, 0.1)',
+                    borderRadius: '3px',
+                    fontSize: '12px'
+                  }}>
+                    <div style={{ fontWeight: 'bold' }}>{index + 1}. {int.type}</div>
+                    <div>Temp: {int.metadata?.temperature}°C</div>
+                    <div>Effect: {int.metadata?.effectiveness}%</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Show Info Panel Button */}
+      {!isInfoPanelVisible && (
+        <button
+          onClick={() => setIsInfoPanelVisible(true)}
+          style={{
+            position: 'fixed',
+            top: '20px',
+            left: '20px',
+            zIndex: 1000,
+            padding: '8px 12px',
+            background: 'rgba(0, 0, 0, 0.7)',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontSize: '14px'
+          }}
+        >
+          📊 Show Info
+        </button>
+      )}
+
+      {/* Instructions */}
+      <div style={{
+        position: 'fixed',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        background: 'rgba(0, 0, 0, 0.8)',
+        color: 'white',
+        padding: '20px',
+        borderRadius: '10px',
+        textAlign: 'center',
+        zIndex: 1000,
+        maxWidth: '300px',
+        pointerEvents: 'none'
+      }}>
+        <h3>{isARActive ? 'AR Mode Active' : '3D Preview Mode'}</h3>
+        <p>{isARActive ? 
+          'Point camera at surfaces and tap to place objects' : 
+          'Click anywhere to place objects. Use AR button for real AR experience'
+        }</p>
+      </div>
+    </div>
+  );
+} 

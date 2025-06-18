@@ -14,6 +14,7 @@ import ChatbotComponent from './components/chatbot/ChatbotComponent';
 import MitigationPlannerPage from './pages/MitigationPlannerPage';
 import ARModeEntry from './components/ARModeEntry';
 import ARMode from './pages/ar-mode';
+import EnhancedARMode from './pages/EnhancedARMode';
 import ARErrorBoundary from './components/ARErrorBoundary';
 import { ARProvider } from './contexts/ARContext';
 import ARTest from './components/ARTest';
@@ -47,6 +48,14 @@ function App() {
           element={
             <ARErrorBoundary>
               <ARMode />
+            </ARErrorBoundary>
+          } 
+        />
+        <Route 
+          path="/enhanced-ar" 
+          element={
+            <ARErrorBoundary>
+              <EnhancedARMode />
             </ARErrorBoundary>
           } 
         />
