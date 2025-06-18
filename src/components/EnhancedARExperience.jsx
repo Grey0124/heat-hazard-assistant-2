@@ -370,6 +370,7 @@ export default function EnhancedARExperience({
   const [interventions, setInterventions] = useState([]);
   const [isARActive, setIsARActive] = useState(false);
   const [cameraDistance, setCameraDistance] = useState(5);
+  const [arSession, setArSession] = useState(null);
 
   const addIntervention = useCallback((position) => {
     const metadata = {
@@ -416,6 +417,18 @@ export default function EnhancedARExperience({
   const handleZoomIn = () => setCameraDistance(prev => Math.max(1, prev - 1));
   const handleZoomOut = () => setCameraDistance(prev => Math.min(20, prev + 1));
 
+  const handleARSessionStart = useCallback((session) => {
+    console.log('AR session started, setting active state');
+    setArSession(session);
+    setIsARActive(true);
+  }, []);
+
+  const handleARSessionEnd = useCallback(() => {
+    console.log('AR session ended, setting inactive state');
+    setArSession(null);
+    setIsARActive(false);
+  }, []);
+
   return (
     <div style={{ position: 'relative', width: '100%', height: '100vh', paddingTop: '60px' }}>
       {/* AR Canvas */}
@@ -437,7 +450,7 @@ export default function EnhancedARExperience({
           console.log('WebGL context created with XR enabled');
         }}
       >
-        <XR store={xrStore}>
+        <XR store={xrStore} session={arSession}>
           {/* Lighting */}
           <ambientLight intensity={0.6} />
           <directionalLight 
@@ -494,14 +507,8 @@ export default function EnhancedARExperience({
           onUnsupported={() => {
             console.log('AR not supported');
           }}
-          onSessionStart={() => {
-            console.log('AR session started');
-            setIsARActive(true);
-          }}
-          onSessionEnd={() => {
-            console.log('AR session ended');
-            setIsARActive(false);
-          }}
+          onSessionStart={handleARSessionStart}
+          onSessionEnd={handleARSessionEnd}
         />
       </div>
 
