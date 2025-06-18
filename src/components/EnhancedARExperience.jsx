@@ -6,10 +6,121 @@ import {
   Float
 } from '@react-three/drei';
 import { XR, useXR, useXRHitTest, createXRStore } from '@react-three/xr';
+import { ARButton as ThreeJSARButton } from 'three/examples/jsm/webxr/ARButton.js';
 import * as THREE from 'three';
 
 // Create XR store
 const xrStore = createXRStore();
+
+// React wrapper for Three.js ARButton
+function ARButton({ sessionInit, onUnsupported, onSessionStart, onSessionEnd }) {
+  const buttonRef = useRef();
+  const [isSupported, setIsSupported] = useState(false);
+  const [isChecking, setIsChecking] = useState(true);
+
+  useEffect(() => {
+    const checkSupport = async () => {
+      try {
+        if ('xr' in navigator) {
+          const supported = await navigator.xr.isSessionSupported('immersive-ar');
+          setIsSupported(supported);
+          console.log('AR Support check completed:', supported);
+        } else {
+          setIsSupported(false);
+          console.log('WebXR not available');
+        }
+      } catch (error) {
+        console.error('AR support check failed:', error);
+        setIsSupported(false);
+      } finally {
+        setIsChecking(false);
+      }
+    };
+
+    checkSupport();
+  }, []);
+
+  const handleClick = async () => {
+    if (!isSupported) {
+      onUnsupported?.();
+      return;
+    }
+
+    try {
+      // Request camera permission first
+      if (navigator.permissions) {
+        try {
+          const permission = await navigator.permissions.query({ name: 'camera' });
+          if (permission.state === 'denied') {
+            throw new Error('Camera permission denied');
+          }
+        } catch (permError) {
+          console.log('Permission API not supported, proceeding with AR session');
+        }
+      }
+
+      // Request AR session with proper configuration
+      const session = await navigator.xr.requestSession('immersive-ar', {
+        requiredFeatures: ['hit-test'],
+        optionalFeatures: ['dom-overlay', 'local-floor'],
+        domOverlay: { root: document.body }
+      });
+
+      console.log('AR session started successfully');
+      onSessionStart?.(session);
+      
+      session.addEventListener('end', () => {
+        console.log('AR session ended');
+        onSessionEnd?.();
+      });
+
+      session.addEventListener('visibilitychange', () => {
+        console.log('AR session visibility changed:', session.visibilityState);
+      });
+
+    } catch (error) {
+      console.error('Failed to start AR session:', error);
+      onUnsupported?.();
+    }
+  };
+
+  if (isChecking) {
+    return (
+      <button
+        style={{
+          padding: '12px 24px',
+          background: '#ccc',
+          color: 'white',
+          border: 'none',
+          borderRadius: '8px',
+          fontSize: '16px',
+          cursor: 'not-allowed'
+        }}
+        disabled
+      >
+        Checking AR Support...
+      </button>
+    );
+  }
+
+  return (
+    <button
+      onClick={handleClick}
+      disabled={!isSupported}
+      style={{
+        padding: '12px 24px',
+        background: isSupported ? '#2196f3' : '#ccc',
+        color: 'white',
+        border: 'none',
+        borderRadius: '8px',
+        fontSize: '16px',
+        cursor: isSupported ? 'pointer' : 'not-allowed'
+      }}
+    >
+      {isSupported ? 'Start AR Experience' : 'AR Not Supported'}
+    </button>
+  );
+}
 
 // AR Intervention Object Component
 function ARIntervention({ type, position, metadata, onRemove }) {
@@ -249,119 +360,6 @@ function ARScene({ interventions, onAddIntervention, selectedType }) {
   );
 }
 
-// Custom AR Button Component with proper camera handling
-function ARButton({ sessionInit, onUnsupported, onSessionStart, onSessionEnd }) {
-  const [isSupported, setIsSupported] = useState(false);
-  const [isChecking, setIsChecking] = useState(true);
-  const [isStarting, setIsStarting] = useState(false);
-
-  useEffect(() => {
-    const checkSupport = async () => {
-      try {
-        if ('xr' in navigator) {
-          const supported = await navigator.xr.isSessionSupported('immersive-ar');
-          setIsSupported(supported);
-          console.log('AR Support check completed:', supported);
-        } else {
-          setIsSupported(false);
-          console.log('WebXR not available');
-        }
-      } catch (error) {
-        console.error('AR support check failed:', error);
-        setIsSupported(false);
-      } finally {
-        setIsChecking(false);
-      }
-    };
-    checkSupport();
-  }, []);
-
-  const handleClick = async () => {
-    if (!isSupported || isStarting) {
-      onUnsupported?.();
-      return;
-    }
-
-    setIsStarting(true);
-    
-    try {
-      // Request camera permission first
-      if (navigator.permissions) {
-        try {
-          const permission = await navigator.permissions.query({ name: 'camera' });
-          if (permission.state === 'denied') {
-            throw new Error('Camera permission denied');
-          }
-        } catch (permError) {
-          console.log('Permission API not supported, proceeding with AR session');
-        }
-      }
-
-      // Request AR session with proper configuration
-      const session = await navigator.xr.requestSession('immersive-ar', {
-        requiredFeatures: ['hit-test'],
-        optionalFeatures: ['dom-overlay', 'local-floor'],
-        domOverlay: { root: document.body }
-      });
-
-      console.log('AR session started successfully');
-      onSessionStart?.(session);
-      
-      session.addEventListener('end', () => {
-        console.log('AR session ended');
-        setIsStarting(false);
-        onSessionEnd?.();
-      });
-
-      session.addEventListener('visibilitychange', () => {
-        console.log('AR session visibility changed:', session.visibilityState);
-      });
-
-    } catch (error) {
-      console.error('Failed to start AR session:', error);
-      setIsStarting(false);
-      onUnsupported?.();
-    }
-  };
-
-  if (isChecking) {
-    return (
-      <button
-        style={{
-          padding: '12px 24px',
-          background: '#ccc',
-          color: 'white',
-          border: 'none',
-          borderRadius: '8px',
-          fontSize: '16px',
-          cursor: 'not-allowed'
-        }}
-        disabled
-      >
-        Checking AR Support...
-      </button>
-    );
-  }
-
-  return (
-    <button
-      onClick={handleClick}
-      disabled={!isSupported || isStarting}
-      style={{
-        padding: '12px 24px',
-        background: isSupported && !isStarting ? '#2196f3' : '#ccc',
-        color: 'white',
-        border: 'none',
-        borderRadius: '8px',
-        fontSize: '16px',
-        cursor: isSupported && !isStarting ? 'pointer' : 'not-allowed'
-      }}
-    >
-      {isStarting ? 'Starting AR...' : (isSupported ? 'Start AR Experience' : 'AR Not Supported')}
-    </button>
-  );
-}
-
 // Main Enhanced AR Experience Component
 export default function EnhancedARExperience({ 
   selectedType, 
@@ -372,7 +370,6 @@ export default function EnhancedARExperience({
   const [interventions, setInterventions] = useState([]);
   const [isARActive, setIsARActive] = useState(false);
   const [cameraDistance, setCameraDistance] = useState(5);
-  const [arSession, setArSession] = useState(null);
 
   const addIntervention = useCallback((position) => {
     const metadata = {
@@ -419,18 +416,6 @@ export default function EnhancedARExperience({
   const handleZoomIn = () => setCameraDistance(prev => Math.max(1, prev - 1));
   const handleZoomOut = () => setCameraDistance(prev => Math.min(20, prev + 1));
 
-  const handleARSessionStart = useCallback((session) => {
-    console.log('AR session started, setting active state');
-    setArSession(session);
-    setIsARActive(true);
-  }, []);
-
-  const handleARSessionEnd = useCallback(() => {
-    console.log('AR session ended, setting inactive state');
-    setArSession(null);
-    setIsARActive(false);
-  }, []);
-
   return (
     <div style={{ position: 'relative', width: '100%', height: '100vh', paddingTop: '60px' }}>
       {/* AR Canvas */}
@@ -452,7 +437,7 @@ export default function EnhancedARExperience({
           console.log('WebGL context created with XR enabled');
         }}
       >
-        <XR store={xrStore} session={arSession}>
+        <XR store={xrStore}>
           {/* Lighting */}
           <ambientLight intensity={0.6} />
           <directionalLight 
@@ -509,8 +494,14 @@ export default function EnhancedARExperience({
           onUnsupported={() => {
             console.log('AR not supported');
           }}
-          onSessionStart={handleARSessionStart}
-          onSessionEnd={handleARSessionEnd}
+          onSessionStart={() => {
+            console.log('AR session started');
+            setIsARActive(true);
+          }}
+          onSessionEnd={() => {
+            console.log('AR session ended');
+            setIsARActive(false);
+          }}
         />
       </div>
 
