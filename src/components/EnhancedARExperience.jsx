@@ -249,10 +249,11 @@ function ARScene({ interventions, onAddIntervention, selectedType }) {
   );
 }
 
-// Custom AR Button Component
+// Custom AR Button Component with proper camera handling
 function ARButton({ sessionInit, onUnsupported, onSessionStart, onSessionEnd }) {
   const [isSupported, setIsSupported] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
+  const [isStarting, setIsStarting] = useState(false);
 
   useEffect(() => {
     const checkSupport = async () => {
@@ -260,8 +261,10 @@ function ARButton({ sessionInit, onUnsupported, onSessionStart, onSessionEnd }) 
         if ('xr' in navigator) {
           const supported = await navigator.xr.isSessionSupported('immersive-ar');
           setIsSupported(supported);
+          console.log('AR Support check completed:', supported);
         } else {
           setIsSupported(false);
+          console.log('WebXR not available');
         }
       } catch (error) {
         console.error('AR support check failed:', error);
@@ -274,20 +277,49 @@ function ARButton({ sessionInit, onUnsupported, onSessionStart, onSessionEnd }) 
   }, []);
 
   const handleClick = async () => {
-    if (!isSupported) {
+    if (!isSupported || isStarting) {
       onUnsupported?.();
       return;
     }
 
+    setIsStarting(true);
+    
     try {
-      const session = await navigator.xr.requestSession('immersive-ar', sessionInit);
+      // Request camera permission first
+      if (navigator.permissions) {
+        try {
+          const permission = await navigator.permissions.query({ name: 'camera' });
+          if (permission.state === 'denied') {
+            throw new Error('Camera permission denied');
+          }
+        } catch (permError) {
+          console.log('Permission API not supported, proceeding with AR session');
+        }
+      }
+
+      // Request AR session with proper configuration
+      const session = await navigator.xr.requestSession('immersive-ar', {
+        requiredFeatures: ['hit-test'],
+        optionalFeatures: ['dom-overlay', 'local-floor'],
+        domOverlay: { root: document.body }
+      });
+
+      console.log('AR session started successfully');
       onSessionStart?.(session);
       
       session.addEventListener('end', () => {
+        console.log('AR session ended');
+        setIsStarting(false);
         onSessionEnd?.();
       });
+
+      session.addEventListener('visibilitychange', () => {
+        console.log('AR session visibility changed:', session.visibilityState);
+      });
+
     } catch (error) {
       console.error('Failed to start AR session:', error);
+      setIsStarting(false);
       onUnsupported?.();
     }
   };
@@ -314,18 +346,18 @@ function ARButton({ sessionInit, onUnsupported, onSessionStart, onSessionEnd }) 
   return (
     <button
       onClick={handleClick}
+      disabled={!isSupported || isStarting}
       style={{
         padding: '12px 24px',
-        background: isSupported ? '#2196f3' : '#ccc',
+        background: isSupported && !isStarting ? '#2196f3' : '#ccc',
         color: 'white',
         border: 'none',
         borderRadius: '8px',
         fontSize: '16px',
-        cursor: isSupported ? 'pointer' : 'not-allowed'
+        cursor: isSupported && !isStarting ? 'pointer' : 'not-allowed'
       }}
-      disabled={!isSupported}
     >
-      {isSupported ? 'Start AR Experience' : 'AR Not Supported'}
+      {isStarting ? 'Starting AR...' : (isSupported ? 'Start AR Experience' : 'AR Not Supported')}
     </button>
   );
 }
@@ -340,9 +372,7 @@ export default function EnhancedARExperience({
   const [interventions, setInterventions] = useState([]);
   const [isARActive, setIsARActive] = useState(false);
   const [cameraDistance, setCameraDistance] = useState(5);
-  const [isControlsVisible, setIsControlsVisible] = useState(true);
-  const [isInfoPanelVisible, setIsInfoPanelVisible] = useState(true);
-  const [isTypeSelectorVisible, setIsTypeSelectorVisible] = useState(true);
+  const [arSession, setArSession] = useState(null);
 
   const addIntervention = useCallback((position) => {
     const metadata = {
@@ -389,8 +419,20 @@ export default function EnhancedARExperience({
   const handleZoomIn = () => setCameraDistance(prev => Math.max(1, prev - 1));
   const handleZoomOut = () => setCameraDistance(prev => Math.min(20, prev + 1));
 
+  const handleARSessionStart = useCallback((session) => {
+    console.log('AR session started, setting active state');
+    setArSession(session);
+    setIsARActive(true);
+  }, []);
+
+  const handleARSessionEnd = useCallback(() => {
+    console.log('AR session ended, setting inactive state');
+    setArSession(null);
+    setIsARActive(false);
+  }, []);
+
   return (
-    <div style={{ position: 'relative', width: '100%', height: '100vh' }}>
+    <div style={{ position: 'relative', width: '100%', height: '100vh', paddingTop: '60px' }}>
       {/* AR Canvas */}
       <Canvas
         camera={{ 
@@ -406,6 +448,7 @@ export default function EnhancedARExperience({
         }}
         onCreated={({ gl }) => {
           gl.xr.enabled = true;
+          console.log('WebGL context created with XR enabled');
         }}
       >
         <XR store={xrStore}>
@@ -465,12 +508,8 @@ export default function EnhancedARExperience({
           onUnsupported={() => {
             console.log('AR not supported');
           }}
-          onSessionStart={() => {
-            setIsARActive(true);
-          }}
-          onSessionEnd={() => {
-            setIsARActive(false);
-          }}
+          onSessionStart={handleARSessionStart}
+          onSessionEnd={handleARSessionEnd}
         />
       </div>
 
@@ -517,88 +556,6 @@ export default function EnhancedARExperience({
             −
           </button>
         </div>
-      )}
-
-      {/* Info Panel - Collapsible */}
-      {isInfoPanelVisible && (
-        <div style={{
-          position: 'fixed',
-          top: '20px',
-          left: '20px',
-          background: 'rgba(0, 0, 0, 0.8)',
-          color: 'white',
-          padding: '15px',
-          borderRadius: '10px',
-          fontSize: '14px',
-          zIndex: 1000,
-          maxWidth: '300px',
-          maxHeight: '400px',
-          overflowY: 'auto'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-            <h3 style={{ margin: 0, fontSize: '16px' }}>Scene Info</h3>
-            <button
-              onClick={() => setIsInfoPanelVisible(false)}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: 'white',
-                cursor: 'pointer',
-                fontSize: '18px'
-              }}
-            >
-              ×
-            </button>
-          </div>
-          <div>Mode: {isARActive ? 'AR Active' : '3D Preview'}</div>
-          <div>Objects: {interventions.length}</div>
-          <div>Selected: {selectedType}</div>
-          {!isARActive && <div>Zoom: {cameraDistance.toFixed(1)}x</div>}
-          
-          {/* Interventions list */}
-          {interventions.length > 0 && (
-            <div style={{ marginTop: '10px' }}>
-              <h4 style={{ margin: '0 0 5px 0' }}>Placed Objects:</h4>
-              <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
-                {interventions.map((int, index) => (
-                  <div key={int.id} style={{
-                    marginBottom: '5px',
-                    padding: '5px',
-                    background: 'rgba(255, 255, 255, 0.1)',
-                    borderRadius: '3px',
-                    fontSize: '12px'
-                  }}>
-                    <div style={{ fontWeight: 'bold' }}>{index + 1}. {int.type}</div>
-                    <div>Temp: {int.metadata?.temperature}°C</div>
-                    <div>Effect: {int.metadata?.effectiveness}%</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Show Info Panel Button */}
-      {!isInfoPanelVisible && (
-        <button
-          onClick={() => setIsInfoPanelVisible(true)}
-          style={{
-            position: 'fixed',
-            top: '20px',
-            left: '20px',
-            zIndex: 1000,
-            padding: '8px 12px',
-            background: 'rgba(0, 0, 0, 0.7)',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            fontSize: '14px'
-          }}
-        >
-          📊 Show Info
-        </button>
       )}
 
       {/* Instructions - Fixed positioning to avoid overlap */}
