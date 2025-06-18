@@ -17,6 +17,7 @@ function ARButton({ sessionInit, onUnsupported, onSessionStart, onSessionEnd }) 
   const buttonRef = useRef();
   const [isSupported, setIsSupported] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
+  const [permissionStatus, setPermissionStatus] = useState('unknown');
 
   useEffect(() => {
     const checkSupport = async () => {
@@ -25,6 +26,24 @@ function ARButton({ sessionInit, onUnsupported, onSessionStart, onSessionEnd }) 
           const supported = await navigator.xr.isSessionSupported('immersive-ar');
           setIsSupported(supported);
           console.log('AR Support check completed:', supported);
+          
+          // Check camera permission status
+          if (navigator.permissions) {
+            try {
+              const permission = await navigator.permissions.query({ name: 'camera' });
+              setPermissionStatus(permission.state);
+              console.log('Camera permission status:', permission.state);
+              
+              // Listen for permission changes
+              permission.addEventListener('change', () => {
+                setPermissionStatus(permission.state);
+                console.log('Camera permission changed to:', permission.state);
+              });
+            } catch (permError) {
+              console.log('Permission API not supported:', permError);
+              setPermissionStatus('unknown');
+            }
+          }
         } else {
           setIsSupported(false);
           console.log('WebXR not available');
@@ -40,6 +59,30 @@ function ARButton({ sessionInit, onUnsupported, onSessionStart, onSessionEnd }) 
     checkSupport();
   }, []);
 
+  const requestCameraPermission = async () => {
+    try {
+      // Try to get camera stream to trigger permission request
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { 
+          facingMode: 'environment',
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        } 
+      });
+      
+      // Stop the stream immediately after getting permission
+      stream.getTracks().forEach(track => track.stop());
+      
+      console.log('Camera permission granted');
+      setPermissionStatus('granted');
+      return true;
+    } catch (error) {
+      console.error('Camera permission denied:', error);
+      setPermissionStatus('denied');
+      return false;
+    }
+  };
+
   const handleClick = async () => {
     if (!isSupported) {
       onUnsupported?.();
@@ -47,22 +90,18 @@ function ARButton({ sessionInit, onUnsupported, onSessionStart, onSessionEnd }) 
     }
 
     try {
+      console.log('Starting AR session...');
+      
       // Request camera permission first
-      if (navigator.permissions) {
-        try {
-          const permission = await navigator.permissions.query({ name: 'camera' });
-          if (permission.state === 'denied') {
-            throw new Error('Camera permission denied');
-          }
-        } catch (permError) {
-          console.log('Permission API not supported, proceeding with AR session');
-        }
+      const cameraGranted = await requestCameraPermission();
+      if (!cameraGranted) {
+        throw new Error('Camera permission is required for AR experience');
       }
 
       // Request AR session with proper configuration
       const session = await navigator.xr.requestSession('immersive-ar', {
         requiredFeatures: ['hit-test'],
-        optionalFeatures: ['dom-overlay', 'local-floor'],
+        optionalFeatures: ['dom-overlay', 'local-floor', 'light-estimation'],
         domOverlay: { root: document.body }
       });
 
@@ -78,8 +117,23 @@ function ARButton({ sessionInit, onUnsupported, onSessionStart, onSessionEnd }) 
         console.log('AR session visibility changed:', session.visibilityState);
       });
 
+      // Set up session for rendering
+      session.addEventListener('select', () => {
+        console.log('AR session select event');
+      });
+
     } catch (error) {
       console.error('Failed to start AR session:', error);
+      
+      // Provide specific error messages
+      if (error.message.includes('permission')) {
+        alert('Camera permission is required for AR. Please allow camera access and try again.');
+      } else if (error.message.includes('not supported')) {
+        alert('AR is not supported on this device or browser.');
+      } else {
+        alert(`AR session failed: ${error.message}`);
+      }
+      
       onUnsupported?.();
     }
   };
@@ -103,21 +157,32 @@ function ARButton({ sessionInit, onUnsupported, onSessionStart, onSessionEnd }) 
     );
   }
 
+  const getButtonText = () => {
+    if (!isSupported) return 'AR Not Supported';
+    if (permissionStatus === 'denied') return 'Camera Permission Required';
+    return 'Start AR Experience';
+  };
+
+  const getButtonStyle = () => {
+    if (!isSupported) return { background: '#ccc', cursor: 'not-allowed' };
+    if (permissionStatus === 'denied') return { background: '#f44336', cursor: 'pointer' };
+    return { background: '#2196f3', cursor: 'pointer' };
+  };
+
   return (
     <button
       onClick={handleClick}
       disabled={!isSupported}
       style={{
         padding: '12px 24px',
-        background: isSupported ? '#2196f3' : '#ccc',
         color: 'white',
         border: 'none',
         borderRadius: '8px',
         fontSize: '16px',
-        cursor: isSupported ? 'pointer' : 'not-allowed'
+        ...getButtonStyle()
       }}
     >
-      {isSupported ? 'Start AR Experience' : 'AR Not Supported'}
+      {getButtonText()}
     </button>
   );
 }
@@ -315,6 +380,7 @@ function ARScene({ interventions, onAddIntervention, selectedType }) {
   const { session } = useXR();
   const [hitTestPosition, setHitTestPosition] = useState(new THREE.Vector3(0, 0, 0));
   const [showReticle, setShowReticle] = useState(false);
+  const [sessionActive, setSessionActive] = useState(false);
 
   const handleHitTest = useCallback((position) => {
     setHitTestPosition(position);
@@ -328,10 +394,26 @@ function ARScene({ interventions, onAddIntervention, selectedType }) {
   }, [showReticle, hitTestPosition, onAddIntervention]);
 
   useEffect(() => {
-    const handleClick = () => handleTap();
     if (session) {
+      setSessionActive(true);
+      console.log('AR session active in ARScene');
+      
+      const handleClick = () => handleTap();
       session.addEventListener('select', handleClick);
-      return () => session.removeEventListener('select', handleClick);
+      
+      // Listen for session end
+      const handleSessionEnd = () => {
+        setSessionActive(false);
+        console.log('AR session ended in ARScene');
+      };
+      session.addEventListener('end', handleSessionEnd);
+      
+      return () => {
+        session.removeEventListener('select', handleClick);
+        session.removeEventListener('end', handleSessionEnd);
+      };
+    } else {
+      setSessionActive(false);
     }
   }, [session, handleTap]);
 
@@ -356,6 +438,14 @@ function ARScene({ interventions, onAddIntervention, selectedType }) {
           metadata={intervention.metadata}
         />
       ))}
+      
+      {/* Session status indicator */}
+      {sessionActive && (
+        <mesh position={[0, 0, -2]}>
+          <boxGeometry args={[0.1, 0.1, 0.1]} />
+          <meshStandardMaterial color="green" />
+        </mesh>
+      )}
     </>
   );
 }
@@ -371,6 +461,7 @@ export default function EnhancedARExperience({
   const [isARActive, setIsARActive] = useState(false);
   const [cameraDistance, setCameraDistance] = useState(5);
   const [arSession, setArSession] = useState(null);
+  const [sessionStatus, setSessionStatus] = useState('inactive');
 
   const addIntervention = useCallback((position) => {
     const metadata = {
@@ -421,12 +512,31 @@ export default function EnhancedARExperience({
     console.log('AR session started, setting active state');
     setArSession(session);
     setIsARActive(true);
+    setSessionStatus('active');
+    
+    // Ensure the session is properly configured for camera access
+    session.addEventListener('visibilitychange', () => {
+      console.log('AR session visibility changed:', session.visibilityState);
+      if (session.visibilityState === 'visible') {
+        setSessionStatus('active');
+      } else {
+        setSessionStatus('hidden');
+      }
+    });
+    
+    session.addEventListener('end', () => {
+      console.log('AR session ended from main component');
+      setArSession(null);
+      setIsARActive(false);
+      setSessionStatus('inactive');
+    });
   }, []);
 
   const handleARSessionEnd = useCallback(() => {
     console.log('AR session ended, setting inactive state');
     setArSession(null);
     setIsARActive(false);
+    setSessionStatus('inactive');
   }, []);
 
   return (
@@ -501,7 +611,7 @@ export default function EnhancedARExperience({
         <ARButton 
           sessionInit={{
             requiredFeatures: ['hit-test'],
-            optionalFeatures: ['dom-overlay', 'local-floor'],
+            optionalFeatures: ['dom-overlay', 'local-floor', 'light-estimation'],
             domOverlay: { root: document.body }
           }}
           onUnsupported={() => {
@@ -575,6 +685,24 @@ export default function EnhancedARExperience({
         </div>
       )}
 
+      {/* Session Status */}
+      {sessionStatus !== 'inactive' && (
+        <div style={{
+          position: 'fixed',
+          top: '120px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          background: 'rgba(0, 0, 0, 0.8)',
+          color: 'white',
+          padding: '8px 16px',
+          borderRadius: '20px',
+          fontSize: '12px',
+          zIndex: 1000
+        }}>
+          Session: {sessionStatus}
+        </div>
+      )}
+
       {/* Instructions - Fixed positioning to avoid overlap */}
       <div style={{
         position: 'fixed',
@@ -595,6 +723,11 @@ export default function EnhancedARExperience({
           'Point camera at surfaces and tap to place objects' : 
           'Click anywhere to place objects. Use AR button for real AR experience'
         }</p>
+        {isARActive && (
+          <p style={{ fontSize: '12px', marginTop: '10px' }}>
+            If you don't see the camera feed, check camera permissions
+          </p>
+        )}
       </div>
     </div>
   );

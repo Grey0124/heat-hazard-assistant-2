@@ -144,6 +144,21 @@ export default function ARNavbar({
             <h3 style={{ margin: '0 0 10px 0', fontSize: '16px' }}>Controls</h3>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               <button 
+                onClick={() => window.open('/camera-test', '_blank')}
+                style={{
+                  padding: '8px 16px',
+                  background: '#FF9800',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease'
+                }}
+              >
+                📷 Camera Test
+              </button>
+              <button 
                 onClick={onGoToMap} 
                 style={{
                   padding: '8px 16px',
