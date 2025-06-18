@@ -5,8 +5,11 @@ import {
   OrbitControls,
   Float
 } from '@react-three/drei';
-import { XR, useXR, useXRHitTest } from '@react-three/xr';
+import { XR, useXR, useXRHitTest, createXRStore } from '@react-three/xr';
 import * as THREE from 'three';
+
+// Create XR store
+const xrStore = createXRStore();
 
 // AR Intervention Object Component
 function ARIntervention({ type, position, metadata, onRemove }) {
@@ -405,7 +408,7 @@ export default function EnhancedARExperience({
           gl.xr.enabled = true;
         }}
       >
-        <XR>
+        <XR store={xrStore}>
           {/* Lighting */}
           <ambientLight intensity={0.6} />
           <directionalLight 
@@ -598,7 +601,7 @@ export default function EnhancedARExperience({
         </button>
       )}
 
-      {/* Instructions */}
+      {/* Instructions - Fixed positioning to avoid overlap */}
       <div style={{
         position: 'fixed',
         top: '50%',
@@ -609,7 +612,7 @@ export default function EnhancedARExperience({
         padding: '20px',
         borderRadius: '10px',
         textAlign: 'center',
-        zIndex: 1000,
+        zIndex: 999,
         maxWidth: '300px',
         pointerEvents: 'none'
       }}>
