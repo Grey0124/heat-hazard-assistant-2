@@ -18,6 +18,8 @@ export default function ARExperience({ selectedType, onInterventionAdded, origin
   const [cameraDistance, setCameraDistance] = useState(5);
   const [isControlsVisible, setIsControlsVisible] = useState(true);
   const [arError, setArError] = useState('');
+  const [useFallback, setUseFallback] = useState(false);
+  const [permissionStatus, setPermissionStatus] = useState('unknown');
 
   // Check AR support on mount
   useEffect(() => {
@@ -37,6 +39,18 @@ export default function ARExperience({ selectedType, onInterventionAdded, origin
       }
     };
     checkARSupport();
+  }, []);
+
+  // Check camera permission status and listen for changes
+  useEffect(() => {
+    if (navigator.permissions) {
+      navigator.permissions.query({ name: 'camera' }).then(permission => {
+        setPermissionStatus(permission.state);
+        permission.addEventListener('change', () => {
+          setPermissionStatus(permission.state);
+        });
+      }).catch(() => setPermissionStatus('unknown'));
+    }
   }, []);
 
   // Initialize Three.js scene
@@ -126,12 +140,32 @@ export default function ARExperience({ selectedType, onInterventionAdded, origin
     }
   }, [cameraDistance, isARActive]);
 
+  // Helper to request camera access and immediately stop the stream
+  const requestCameraAccess = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+      });
+      // Immediately stop all tracks
+      stream.getTracks().forEach(track => track.stop());
+      return true;
+    } catch (err) {
+      setArError('Camera access denied or unavailable. Please allow camera access in your browser settings.');
+      return false;
+    }
+  };
+
   // Start AR session with multiple fallback methods
   const startARSession = async () => {
     try {
       setArError('');
       if (!isSupported) {
         setArError('AR not supported on this device');
+        return;
+      }
+      // Prompt for camera permission, then immediately stop the stream
+      const cameraGranted = await requestCameraAccess();
+      if (!cameraGranted) {
         return;
       }
 
@@ -425,19 +459,46 @@ export default function ARExperience({ selectedType, onInterventionAdded, origin
     setCameraDistance(prev => Math.min(20, prev + 1));
   };
 
+  // Clean up AR session and renderer on unmount
+  useEffect(() => {
+    return () => {
+      if (sessionRef.current) {
+        sessionRef.current.end();
+      }
+      if (rendererRef.current) {
+        rendererRef.current.dispose();
+      }
+    };
+  }, []);
+
+  if (useFallback) {
+    return (
+      <div style={{ position: 'relative', width: '100%', height: '100vh', background: '#222', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div>
+          <h2>3D Preview Mode</h2>
+          <p>AR is not available. You can still use the 3D preview.</p>
+          <button onClick={() => setUseFallback(false)} style={{ padding: '12px 24px', background: '#2196f3', color: 'white', border: 'none', borderRadius: '8px', fontSize: '16px', cursor: 'pointer', marginTop: '16px' }}>Back to AR</button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-      {/* AR Canvas */}
+    <div style={{ position: 'relative', width: '100%', height: '100vh', paddingTop: '60px' }}>
+      {/* AR Canvas - must be rendered for AR to work */}
       <canvas
         ref={canvasRef}
         style={{
           position: 'fixed',
           top: 0,
           left: 0,
-          width: '100%',
-          height: '100%',
-          background: isARActive ? 'transparent' : 'linear-gradient(135deg, #87CEEB 0%, #98FB98 100%)'
+          width: '100vw',
+          height: '100vh',
+          zIndex: 0,
+          background: 'transparent',
+          display: isARActive || is3DPreviewActive ? 'block' : 'none'
         }}
+        id="ar-canvas"
         onClick={handleCanvasClick}
       />
 
@@ -458,6 +519,9 @@ export default function ARExperience({ selectedType, onInterventionAdded, origin
           textAlign: 'center'
         }}>
           {arError}
+          <div style={{ marginTop: 12 }}>
+            <button onClick={() => setUseFallback(true)} style={{ padding: '8px 16px', background: '#2196f3', color: 'white', border: 'none', borderRadius: '6px', fontSize: '14px', cursor: 'pointer' }}>Use 3D Preview</button>
+          </div>
         </div>
       )}
 
@@ -472,21 +536,39 @@ export default function ARExperience({ selectedType, onInterventionAdded, origin
         zIndex: 1000
       }}>
         {!isARActive ? (
-          <button
-            onClick={startARSession}
-            disabled={!isSupported}
-            style={{
-              padding: '12px 24px',
-              background: isSupported ? '#2196f3' : '#ccc',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              fontSize: '16px',
-              cursor: isSupported ? 'pointer' : 'not-allowed'
-            }}
-          >
-            {isSupported ? 'Start AR Experience' : 'AR Not Supported'}
-          </button>
+          <>
+            <button
+              onClick={startARSession}
+              disabled={!isSupported}
+              style={{
+                padding: '12px 24px',
+                background: isSupported ? '#2196f3' : '#ccc',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '16px',
+                cursor: isSupported ? 'pointer' : 'not-allowed'
+              }}
+            >
+              {isSupported ? 'Start AR Experience' : 'AR Not Supported'}
+            </button>
+            {!isSupported && (
+              <button
+                onClick={() => setUseFallback(true)}
+                style={{
+                  padding: '12px 24px',
+                  background: '#ff9800',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  cursor: 'pointer'
+                }}
+              >
+                Use 3D Preview
+              </button>
+            )}
+          </>
         ) : (
           <button
             onClick={endARSession}
