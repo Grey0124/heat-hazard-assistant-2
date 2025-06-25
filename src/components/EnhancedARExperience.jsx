@@ -381,66 +381,7 @@ export default function EnhancedARExperience({
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100vh', paddingTop: '60px' }}>
-      {/* AR Canvas */}
-      <Canvas
-        camera={{ 
-          position: [0, 2, cameraDistance], 
-          near: 0.01, 
-          far: 1000,
-          fov: 75
-        }}
-        gl={{ 
-          antialias: true, 
-          alpha: true,
-          preserveDrawingBuffer: false,
-          xrCompatible: true
-        }}
-        onCreated={({ gl }) => {
-          gl.xr.enabled = true;
-          console.log('WebGL context created with XR enabled');
-        }}
-      >
-        <XR store={xrStore} session={arSession}>
-          {/* Lighting */}
-          <ambientLight intensity={0.6} />
-          <directionalLight 
-            position={[10, 10, 5]} 
-            intensity={0.8}
-            castShadow
-          />
-          
-          {/* Environment - only show in 3D preview, not AR */}
-          {!isARActive && <Environment preset="sunset" />}
-          
-          {/* Controls for 3D preview */}
-          {!isARActive && (
-            <OrbitControls 
-              enablePan={true}
-              enableZoom={true}
-              enableRotate={true}
-              maxDistance={20}
-              minDistance={1}
-            />
-          )}
-          
-          {/* Scene content */}
-          {isARActive ? (
-            <ARScene 
-              interventions={interventions}
-              onAddIntervention={addIntervention}
-              selectedType={selectedType}
-            />
-          ) : (
-            <PreviewScene 
-              interventions={interventions}
-              onAddIntervention={addIntervention}
-              selectedType={selectedType}
-            />
-          )}
-        </XR>
-      </Canvas>
-
-      {/* AR Button */}
+      {/* AR Button - OUTSIDE Canvas, as in reference samples */}
       <div style={{
         position: 'fixed',
         bottom: '20px',
@@ -448,7 +389,7 @@ export default function EnhancedARExperience({
         transform: 'translateX(-50%)',
         zIndex: 1000
       }}>
-        <ARButton 
+        <ARButton
           sessionInit={{
             requiredFeatures: ['hit-test'],
             optionalFeatures: ['dom-overlay', 'local-floor', 'light-estimation'],
@@ -458,16 +399,71 @@ export default function EnhancedARExperience({
             console.log('AR not supported');
             alert('AR is not supported on this device or browser.');
           }}
-          onSessionStart={(session) => {
-            console.log('AR session started via ARButton');
-            handleARSessionStart(session);
-          }}
-          onSessionEnd={() => {
-            console.log('AR session ended via ARButton');
-            handleARSessionEnd();
-          }}
-        />
+          onSessionStart={handleARSessionStart}
+          onSessionEnd={handleARSessionEnd}
+        >
+          Start AR Experience
+        </ARButton>
       </div>
+
+      {/* AR Canvas */}
+      <Canvas
+        camera={{
+          position: [0, 2, cameraDistance],
+          near: 0.01,
+          far: 1000,
+          fov: 75
+        }}
+        gl={{
+          antialias: true,
+          alpha: true,
+          preserveDrawingBuffer: false,
+          xrCompatible: true
+        }}
+        onCreated={({ gl }) => {
+          gl.xr.enabled = true;
+          console.log('WebGL context created with XR enabled');
+        }}
+      >
+        <XR store={xrStore}>
+          {/* Lighting */}
+          <ambientLight intensity={0.6} />
+          <directionalLight
+            position={[10, 10, 5]}
+            intensity={0.8}
+            castShadow
+          />
+
+          {/* Environment - only show in 3D preview, not AR */}
+          {!isARActive && <Environment preset="sunset" />}
+
+          {/* Controls for 3D preview */}
+          {!isARActive && (
+            <OrbitControls
+              enablePan={true}
+              enableZoom={true}
+              enableRotate={true}
+              maxDistance={20}
+              minDistance={1}
+            />
+          )}
+
+          {/* Scene content */}
+          {isARActive ? (
+            <ARScene
+              interventions={interventions}
+              onAddIntervention={addIntervention}
+              selectedType={selectedType}
+            />
+          ) : (
+            <PreviewScene
+              interventions={interventions}
+              onAddIntervention={addIntervention}
+              selectedType={selectedType}
+            />
+          )}
+        </XR>
+      </Canvas>
 
       {/* Zoom Controls (3D Preview only) */}
       {!isARActive && (

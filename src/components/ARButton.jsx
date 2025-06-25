@@ -54,37 +54,8 @@ export default function ARButton({
     checkSupport();
   }, []);
 
-  // Explicit camera permission request function
-  const requestCameraPermission = async () => {
-    try {
-      // Try to get camera stream to trigger permission request
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { 
-          facingMode: 'environment',
-          width: { ideal: 1920 },
-          height: { ideal: 1080 }
-        } 
-      });
-      // Stop the stream immediately after getting permission
-      stream.getTracks().forEach(track => track.stop());
-      setPermissionStatus('granted');
-      return true;
-    } catch (error) {
-      setPermissionStatus('denied');
-      return false;
-    }
-  };
-
   const handleClick = async () => {
     if (!isSupported) {
-      onUnsupported?.();
-      return;
-    }
-
-    // Request camera permission first
-    const cameraGranted = await requestCameraPermission();
-    if (!cameraGranted) {
-      alert('Camera permission is required for AR. Please allow camera access and try again.');
       onUnsupported?.();
       return;
     }
