@@ -409,8 +409,8 @@ export default function EnhancedARExperience({
             castShadow
           />
           
-          {/* Environment */}
-          <Environment preset="sunset" />
+          {/* Environment - only show in 3D preview, not AR */}
+          {!isARActive && <Environment preset="sunset" />}
           
           {/* Controls for 3D preview */}
           {!isARActive && (
