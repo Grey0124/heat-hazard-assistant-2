@@ -54,8 +54,37 @@ export default function ARButton({
     checkSupport();
   }, []);
 
+  // Explicit camera permission request function
+  const requestCameraPermission = async () => {
+    try {
+      // Try to get camera stream to trigger permission request
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { 
+          facingMode: 'environment',
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        } 
+      });
+      // Stop the stream immediately after getting permission
+      stream.getTracks().forEach(track => track.stop());
+      setPermissionStatus('granted');
+      return true;
+    } catch (error) {
+      setPermissionStatus('denied');
+      return false;
+    }
+  };
+
   const handleClick = async () => {
     if (!isSupported) {
+      onUnsupported?.();
+      return;
+    }
+
+    // Request camera permission first
+    const cameraGranted = await requestCameraPermission();
+    if (!cameraGranted) {
+      alert('Camera permission is required for AR. Please allow camera access and try again.');
       onUnsupported?.();
       return;
     }
@@ -121,6 +150,7 @@ export default function ARButton({
           ...style
         }}
         disabled
+        title="Checking AR and camera support..."
       >
         Checking AR Support...
       </button>
@@ -135,7 +165,7 @@ export default function ARButton({
 
   const getButtonStyle = () => {
     if (!isSupported) return { background: '#ccc', cursor: 'not-allowed' };
-    if (permissionStatus === 'denied') return { background: '#f44336', cursor: 'pointer' };
+    if (permissionStatus === 'denied') return { background: '#f44336', cursor: 'not-allowed' };
     return { background: '#2196f3', cursor: 'pointer' };
   };
 
@@ -143,7 +173,7 @@ export default function ARButton({
     <button
       ref={buttonRef}
       onClick={handleClick}
-      disabled={!isSupported}
+      disabled={!isSupported || permissionStatus === 'denied'}
       style={{
         padding: '12px 24px',
         color: 'white',
@@ -153,6 +183,13 @@ export default function ARButton({
         ...getButtonStyle(),
         ...style
       }}
+      title={
+        !isSupported
+          ? 'AR is not supported on this device or browser.'
+          : permissionStatus === 'denied'
+            ? 'Camera permission is required for AR. Please allow camera access in your browser settings.'
+            : 'Start AR Experience'
+      }
     >
       {getButtonText()}
     </button>
