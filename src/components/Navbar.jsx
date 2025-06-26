@@ -34,7 +34,7 @@ const Navbar = () => {
           <div className="flex items-center">
             {/* Logo */}
             <Link to="/" className="flex items-center">
-              <img src="src\components\logo.png" alt="Logo" className="h-8 w-full" />
+              <img src="/logo.png" alt="Logo" className="h-8 w-full" />
             </Link>
             <Link to="/" className="text-black ml-2 font-bold text-xl">
               {t('app.name')}
@@ -159,7 +159,7 @@ const Navbar = () => {
                 onClick={() => setIsMenuOpen(false)}
                 className="text-red-600 hover:text-red-800 font-medium p-2"
               >
-                {t('nav.close')}
+                Close
               </button>
             </div>
           </div>

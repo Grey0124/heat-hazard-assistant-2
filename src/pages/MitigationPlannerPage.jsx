@@ -212,7 +212,7 @@ const MitigationPlannerPage = () => {
       <Navbar />
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-6">
-          {t('mitigationPlanner.title')}
+          Mitigation Planner
         </h1>
 
         {/* Controls Panel */}
@@ -220,21 +220,21 @@ const MitigationPlannerPage = () => {
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t('mitigationPlanner.interventionType')}
+                Intervention Type
               </label>
               <select
                 value={selectedType}
                 onChange={(e) => setSelectedType(e.target.value)}
                 className="w-full p-2 border rounded-md"
               >
-                <option value="tree">{t('mitigationPlanner.tree')}</option>
-                <option value="roof">{t('mitigationPlanner.reflectiveRoof')}</option>
-                <option value="building">{t('mitigationPlanner.heatIntensiveStructure')}</option>
+                <option value="tree">Tree</option>
+                <option value="roof">Reflective Roof</option>
+                <option value="building">Heat-Intensive Structure</option>
               </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t('Size (m²)')}
+                Size (m²)
               </label>
               <input
                 type="number"
@@ -246,23 +246,23 @@ const MitigationPlannerPage = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t('Terrain Type')}
+                Terrain Type
               </label>
               <select
                 value={terrainType}
                 onChange={(e) => setTerrainType(e.target.value)}
                 className="w-full p-2 border rounded-md"
               >
-                <option value="residential">{t('Residential')}</option>
-                <option value="commercial">{t('Commercial')}</option>
-                <option value="forest">{t('Forest')}</option>
-                <option value="park">{t('Park')}</option>
-                <option value="industrial">{t('Industrial')}</option>
+                <option value="residential">Residential</option>
+                <option value="commercial">Commercial</option>
+                <option value="forest">Forest</option>
+                <option value="park">Park</option>
+                <option value="industrial">Industrial</option>
               </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t('Building Coverage (%)')}
+                Building Coverage (%)
               </label>
               <input
                 type="number"
@@ -275,7 +275,7 @@ const MitigationPlannerPage = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t('Estimated Cooling')}
+                Estimated Cooling
               </label>
               <div className="text-2xl font-bold text-blue-600">
                 {coolingEffect.toFixed(2)}°C
@@ -285,22 +285,22 @@ const MitigationPlannerPage = () => {
 
           {/* AR Mode Link */}
           <div className="mt-4">
-            <Link
-              to="/ar-mode"
+            <button
+              onClick={() => window.open('https://ar-mitigation.vercel.app/', '_blank')}
               className="inline-flex items-center px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-lg transition duration-300"
             >
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
-              {t('mitigationPlanner.tryAR', 'Try AR Mode')}
-            </Link>
+              Try AR Mode
+            </button>
           </div>
 
           {/* Additional controls for radius and coefficients */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t('Neighborhood Radius (m)')}
+                Neighborhood Radius (m)
               </label>
               <input
                 type="number"
@@ -312,7 +312,7 @@ const MitigationPlannerPage = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t('Tree Coefficient (°C per 1% area)')}
+                Tree Coefficient (°C per 1% area)
               </label>
               <input
                 type="number"
@@ -325,7 +325,7 @@ const MitigationPlannerPage = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t('Roof Coefficient (°C per 1% area)')}
+                Roof Coefficient (°C per 1% area)
               </label>
               <input
                 type="number"
@@ -340,9 +340,9 @@ const MitigationPlannerPage = () => {
 
           {/* Forecast Chart */}
           <div className="mt-4">
-            <h3 className="text-lg font-semibold mb-2">{t('mitigationPlanner.forecastTitle')}</h3>
+            <h3 className="text-lg font-semibold mb-2">Forecast</h3>
             {forecastLoading ? (
-              <div className="text-gray-500">{t('mitigationPlanner.loadingForecast')}</div>
+              <div className="text-gray-500">Loading forecast...</div>
             ) : forecastError ? (
               <div className="text-red-500">{forecastError}</div>
             ) : forecastData ? (
@@ -352,27 +352,27 @@ const MitigationPlannerPage = () => {
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" />
                     <YAxis 
-                      label={{ value: t('mitigationPlanner.temperature'), angle: -90, position: 'insideLeft' }}
+                      label={{ value: 'Temperature (°C)', angle: -90, position: 'insideLeft' }}
                       domain={['dataMin - 1', 'dataMax + 1']}
                       tickFormatter={(value) => value.toFixed(2)}
                     />
                     <Tooltip 
                       formatter={(value) => [`${value.toFixed(2)}°C`, '']}
-                      labelFormatter={(label) => `${t('mitigationPlanner.date')}: ${label}`}
+                      labelFormatter={(label) => `Date: ${label}`}
                     />
                     <Legend />
-                    <Bar dataKey="baseline" name={t('mitigationPlanner.baseline')} fill="#8884d8" />
-                    <Bar dataKey="postIntervention" name={t('mitigationPlanner.postIntervention')} fill="#82ca9d" />
+                    <Bar dataKey="baseline" name="Baseline" fill="#8884d8" />
+                    <Bar dataKey="postIntervention" name="Post-Intervention" fill="#82ca9d" />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
             ) : (
-              <div className="text-gray-500">{t('mitigationPlanner.noForecastData')}</div>
+              <div className="text-gray-500">No forecast data available.</div>
             )}
           </div>
 
           <p className="text-sm text-gray-500">
-            {t('mitigationPlanner.info')}
+            Info: This planner estimates the cooling effect of interventions on local temperature. Results are for educational purposes only.
           </p>
         </div>
 
@@ -447,7 +447,7 @@ const MitigationPlannerPage = () => {
         </div>
 
         <div className="mt-4 bg-white rounded-lg shadow-md p-4">
-          <h2 className="text-xl font-semibold mb-4">{t('mitigationPlanner.placedInterventions')}</h2>
+          <h2 className="text-xl font-semibold mb-4">Placed Interventions</h2>
           <div className="space-y-2">
             {interventions.map((intervention) => (
               <div
@@ -457,10 +457,10 @@ const MitigationPlannerPage = () => {
                 <div>
                   <span className="font-medium">
                     {intervention.type === 'tree'
-                      ? t('mitigationPlanner.tree')
+                      ? 'Tree'
                       : intervention.type === 'roof'
-                      ? t('mitigationPlanner.reflectiveRoof')
-                      : t('mitigationPlanner.heatIntensiveStructure')}
+                      ? 'Reflective Roof'
+                      : 'Heat-Intensive Structure'}
                   </span>
                   <span className="text-gray-600 ml-2">({intervention.size} m²)</span>
                 </div>
@@ -468,12 +468,12 @@ const MitigationPlannerPage = () => {
                   onClick={() => handleDeleteIntervention(intervention.id)}
                   className="text-red-600 hover:text-red-800"
                 >
-                  {t('mitigationPlanner.remove')}
+                  Remove
                 </button>
               </div>
             ))}
             {interventions.length === 0 && (
-              <p className="text-gray-500">{t('mitigationPlanner.noInterventions')}</p>
+              <p className="text-gray-500">No interventions placed yet.</p>
             )}
           </div>
         </div>

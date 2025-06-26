@@ -17,9 +17,8 @@ import ARMode from './pages/ar-mode';
 import EnhancedARMode from './pages/EnhancedARMode';
 import ARErrorBoundary from './components/ARErrorBoundary';
 import { ARProvider } from './contexts/ARContext';
-import ARTest from './components/ARTest';
 import CameraPermissionTest from './components/CameraPermissionTest';
-import ARButtonTest from './components/ARButtonTest';
+import ARWebXRTest from './pages/ARWebXRTest';
 
 function App() {
   const { user, loading } = useAuth();
@@ -61,9 +60,8 @@ function App() {
             </ARErrorBoundary>
           } 
         />
-        <Route path="/ar-test" element={<ARTest />} />
         <Route path="/camera-test" element={<CameraPermissionTest />} />
-        <Route path="/ar-button-test" element={<ARButtonTest />} />
+        <Route path="/ar-webxr-test" element={<ARWebXRTest />} />
       </Routes>
       
       {/* ChatbotComponent will appear on all pages */}
