@@ -6,7 +6,7 @@ class HeatHazardService {
   constructor() {
     this.api = axios.create({
       baseURL: API_BASE_URL,
-      timeout: 15000,
+      timeout: 45000,
       headers: {
         'Content-Type': 'application/json',
       },
