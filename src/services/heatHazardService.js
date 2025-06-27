@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'https://idp-final-mustard-groundnut.onrender.com';
+const API_BASE_URL = 'https://heat-hazard-assistant-2.onrender.com';
 
 class HeatHazardService {
   constructor() {
