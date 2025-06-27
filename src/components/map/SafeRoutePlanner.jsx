@@ -7,6 +7,7 @@ import { Loader } from '@googlemaps/js-api-loader';
 import axios from 'axios';
 import OpenAIService from '../../services/OpenAIService';
 import { useTranslation } from 'react-i18next'; // Add this import for translations
+import RouteHeatStrokeRisk from './RouteHeatStrokeRisk_fixed';
 
 // Define libraries array outside the component to prevent unnecessary reloads
 const GOOGLE_MAPS_LIBRARIES = ["places", "routes"];
@@ -27,6 +28,10 @@ const SafeRoutePlanner = () => {
   const [selectedRoute, setSelectedRoute] = useState(0);
   const [weatherData, setWeatherData] = useState(null);
   const [transitMode, setTransitMode] = useState('WALKING'); // 'WALKING', 'TRANSIT', or 'BOTH'
+  
+  // Heat stroke risk state variables
+  const [showHeatStrokeRisk, setShowHeatStrokeRisk] = useState(true);
+  const [routeHeatStrokeRisks, setRouteHeatStrokeRisks] = useState([]);
 
   const mapRef = useRef(null);
   const sourceAutocompleteRef = useRef(null);
@@ -330,7 +335,8 @@ const SafeRoutePlanner = () => {
                 shadeCoverage,
                 heatExposureRisk,
                 steps: route.legs[0].steps,
-                route: route
+                route: route,
+                gmRoute: route
               };
             });
 
@@ -419,7 +425,8 @@ const SafeRoutePlanner = () => {
                 heatExposureRisk,
                 steps: route.legs[0].steps,
                 transitDetails,
-                route: route
+                route: route,
+                gmRoute: route
               };
             });
 
@@ -797,12 +804,47 @@ const SafeRoutePlanner = () => {
                 className="w-full h-96 rounded-lg"
                 style={{ minHeight: "400px" }}
               ></div>
+              
+              {/* Heat Stroke Risk Overlay */}
+              {map && weatherData && showHeatStrokeRisk && alternativeRoutes.length > 0 && (
+                <RouteHeatStrokeRisk
+                  routes={alternativeRoutes}
+                  map={map}
+                  weatherData={
+                    weatherData
+                      ? {
+                          temp: weatherData.main?.temp,
+                          tavg: (weatherData.main?.temp + weatherData.main?.feels_like) / 2,
+                          tmin: weatherData.main?.temp_min,
+                          humidity: weatherData.main?.humidity,
+                          precipitation: weatherData.rain ? weatherData.rain['1h'] || 0 : 0,
+                        }
+                      : null
+                  }
+                  onRouteRiskCalculated={setRouteHeatStrokeRisks}
+                />
+              )}
             </div>
 
             {/* Route Alternatives */}
             {alternativeRoutes.length > 0 && (
               <div className="bg-white rounded-lg shadow-md p-6">
-                <h2 className="text-xl font-semibold mb-4">{t ? t('safeRoute.routes.title') : 'Available Routes'}</h2>
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-semibold">{t ? t('safeRoute.routes.title') : 'Available Routes'}</h2>
+                  <button
+                    onClick={() => setShowHeatStrokeRisk(!showHeatStrokeRisk)}
+                    className={`px-3 py-1 text-sm rounded-lg flex items-center ${
+                      showHeatStrokeRisk 
+                        ? 'bg-red-100 text-red-700 border border-red-300' 
+                        : 'bg-gray-100 text-gray-700 border border-gray-300'
+                    }`}
+                  >
+                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    {showHeatStrokeRisk ? 'Hide' : 'Show'} Heat Stroke Risk
+                  </button>
+                </div>
 
                 {error && (
                   <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
@@ -909,6 +951,83 @@ const SafeRoutePlanner = () => {
                           </ul>
                         </div>
                       )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Heat Stroke Risk Analysis (separate section, margin for clarity) */}
+            {routeHeatStrokeRisks.length > 0 && showHeatStrokeRisk && (
+              <div className="bg-white rounded-lg shadow-md p-6 mt-8">
+                <h2 className="text-xl font-semibold mb-4 flex items-center">
+                  <svg className="w-6 h-6 mr-2 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  Heat Stroke Risk Analysis
+                </h2>
+                <p className="text-sm text-gray-600 mb-4">
+                  ML-powered predictions based on historical weather patterns and incident data
+                </p>
+                
+                <div className="space-y-4">
+                  {routeHeatStrokeRisks.map((routeRisk, index) => (
+                    <div key={index} className="border rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="font-semibold">Route {routeRisk.routeIndex + 1}</h3>
+                        <div className="flex items-center space-x-2">
+                          <span className={`px-3 py-1 text-sm rounded-full ${
+                            routeRisk.averageRisk < 0.3 ? 'bg-green-100 text-green-800' :
+                            routeRisk.averageRisk < 0.6 ? 'bg-yellow-100 text-yellow-800' :
+                            routeRisk.averageRisk < 0.8 ? 'bg-orange-100 text-orange-800' :
+                            'bg-red-100 text-red-800'
+                          }`}>
+                            {(routeRisk.averageRisk * 100).toFixed(1)}% Risk
+                          </span>
+                          <span className="text-sm text-gray-500">
+                            {routeRisk.riskLevel.toUpperCase()}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4 mb-3">
+                        <div>
+                          <p className="text-xs text-gray-500">Average Risk</p>
+                          <p className="font-medium">{(routeRisk.averageRisk * 100).toFixed(1)}%</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500">Maximum Risk</p>
+                          <p className="font-medium">{(routeRisk.maxRisk * 100).toFixed(1)}%</p>
+                        </div>
+                      </div>
+                      
+                      {routeRisk.highRiskSegments.length > 0 && (
+                        <div className="bg-red-50 border border-red-200 rounded p-3 mb-3">
+                          <div className="flex items-center mb-2">
+                            <svg className="w-4 h-4 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            <span className="text-sm font-medium text-red-800">
+                              {routeRisk.highRiskSegments.length} High-Risk Segments Detected
+                            </span>
+                          </div>
+                          <p className="text-xs text-red-700">
+                            These areas have historically shown higher rates of heat-related incidents
+                          </p>
+                        </div>
+                      )}
+                      
+                      <div>
+                        <h4 className="text-sm font-medium mb-2">Safety Recommendations:</h4>
+                        <ul className="space-y-1">
+                          {routeRisk.safetyRecommendations.slice(0, 3).map((rec, idx) => (
+                            <li key={idx} className="flex items-start text-sm">
+                              <span className="text-red-500 mr-2 mt-0.5">•</span>
+                              <span>{rec}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
                     </div>
                   ))}
                 </div>

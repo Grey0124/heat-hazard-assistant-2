@@ -1,0 +1,36 @@
+timestamp,lat,lon,incident_type,severity,description
+2021-07-15 14:30:00,12.9716,77.5946,heat_stroke,4,Heat stroke incident in city center
+2021-07-20 16:45:00,12.9789,77.5917,fire,3,Small fire in residential area
+2021-08-05 13:15:00,12.9655,77.5855,heat_stroke,5,Severe heat stroke requiring hospitalization
+2021-08-12 15:20:00,12.9762,77.6033,drought,2,Water scarcity reported
+2021-09-01 14:00:00,12.9699,77.5980,heat_stroke,3,Heat exhaustion in outdoor worker
+2021-09-08 17:30:00,12.9733,77.6091,fire,4,Forest fire in outskirts
+2021-09-15 12:45:00,12.9677,77.5876,heat_stroke,2,Mild heat stress incident
+2021-10-02 16:00:00,12.9755,77.5967,drought,3,Agricultural drought affecting crops
+2021-10-10 13:30:00,12.9701,77.6012,heat_stroke,4,Heat stroke in elderly person
+2021-10-18 15:45:00,12.9728,77.5889,fire,2,Small electrical fire
+2021-11-05 14:20:00,12.9766,77.5944,heat_stroke,5,Multiple heat stroke cases
+2021-11-12 16:10:00,12.9683,77.6055,drought,4,Severe water shortage
+2021-11-20 12:30:00,12.9744,77.5901,heat_stroke,3,Heat exhaustion in construction worker
+2021-12-01 15:15:00,12.9712,77.5978,fire,3,Building fire due to electrical fault
+2021-12-08 13:45:00,12.9695,77.6023,heat_stroke,2,Mild heat stress
+2021-12-15 17:00:00,12.9771,77.5867,drought,3,Water crisis in residential area
+2022-01-02 14:30:00,12.9725,77.5995,heat_stroke,4,Heat stroke in traffic police
+2022-01-10 16:20:00,12.9758,77.6088,fire,2,Kitchen fire
+2022-01-18 12:15:00,12.9672,77.5923,heat_stroke,3,Heat exhaustion in delivery person
+2022-02-05 15:40:00,12.9739,77.6044,drought,4,Agricultural drought intensifying
+2022-02-12 13:20:00,12.9708,77.5892,heat_stroke,5,Multiple heat-related hospitalizations
+2022-02-20 16:50:00,12.9764,77.5961,fire,3,Vehicle fire
+2022-03-01 14:10:00,12.9687,77.6018,heat_stroke,2,Heat stress in outdoor activity
+2022-03-08 17:25:00,12.9747,77.5873,drought,3,Water scarcity affecting businesses
+2022-03-15 12:40:00,12.9715,77.5987,heat_stroke,4,Heat stroke in school student
+2022-04-02 15:55:00,12.9752,77.6095,fire,2,Small fire in commercial area
+2022-04-10 13:35:00,12.9691,77.5934,heat_stroke,3,Heat exhaustion in street vendor
+2022-04-18 16:30:00,12.9773,77.6051,drought,4,Severe drought conditions
+2022-05-05 14:05:00,12.9721,77.5908,heat_stroke,2,Mild heat stress
+2022-05-12 17:15:00,12.9768,77.5972,fire,3,Electrical fire in apartment
+2022-05-20 12:25:00,12.9685,77.6029,heat_stroke,4,Heat stroke in construction site
+2022-06-01 15:50:00,12.9741,77.5885,drought,3,Water shortage in residential area
+2022-06-08 13:10:00,12.9704,77.5998,heat_stroke,3,Heat exhaustion in outdoor worker
+2022-06-15 16:40:00,12.9756,77.6082,fire,2,Small fire in restaurant
+2022-07-22 12:50:00,12.9678,77.5916,heat_stroke,5,Multiple heat-related emergencies 

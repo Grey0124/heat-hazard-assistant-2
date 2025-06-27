@@ -1,0 +1,117 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "landcover_type": "urban",
+        "urban_density": 0.85,
+        "vegetation_cover": 0.15,
+        "water_bodies": 0.02,
+        "description": "High density urban area"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[77.59, 12.97], [77.60, 12.97], [77.60, 12.98], [77.59, 12.98], [77.59, 12.97]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "landcover_type": "vegetation",
+        "urban_density": 0.10,
+        "vegetation_cover": 0.80,
+        "water_bodies": 0.05,
+        "description": "Park and green space"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[77.58, 12.96], [77.59, 12.96], [77.59, 12.97], [77.58, 12.97], [77.58, 12.96]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "landcover_type": "water",
+        "urban_density": 0.05,
+        "vegetation_cover": 0.20,
+        "water_bodies": 0.70,
+        "description": "Lake and water bodies"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[77.60, 12.96], [77.61, 12.96], [77.61, 12.97], [77.60, 12.97], [77.60, 12.96]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "landcover_type": "agriculture",
+        "urban_density": 0.15,
+        "vegetation_cover": 0.60,
+        "water_bodies": 0.10,
+        "description": "Agricultural land"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[77.57, 12.97], [77.58, 12.97], [77.58, 12.98], [77.57, 12.98], [77.57, 12.97]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "landcover_type": "bare_soil",
+        "urban_density": 0.30,
+        "vegetation_cover": 0.10,
+        "water_bodies": 0.02,
+        "description": "Construction and bare soil"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[77.61, 12.97], [77.62, 12.97], [77.62, 12.98], [77.61, 12.98], [77.61, 12.97]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "landcover_type": "urban",
+        "urban_density": 0.70,
+        "vegetation_cover": 0.25,
+        "water_bodies": 0.03,
+        "description": "Medium density residential"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[77.58, 12.98], [77.59, 12.98], [77.59, 12.99], [77.58, 12.99], [77.58, 12.98]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "landcover_type": "vegetation",
+        "urban_density": 0.20,
+        "vegetation_cover": 0.70,
+        "water_bodies": 0.08,
+        "description": "Forest and natural vegetation"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[77.60, 12.98], [77.61, 12.98], [77.61, 12.99], [77.60, 12.99], [77.60, 12.98]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "landcover_type": "urban",
+        "urban_density": 0.90,
+        "vegetation_cover": 0.05,
+        "water_bodies": 0.01,
+        "description": "Commercial and industrial area"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[77.59, 12.99], [77.60, 12.99], [77.60, 13.00], [77.59, 13.00], [77.59, 12.99]]]
+      }
+    }
+  ]
+} 
