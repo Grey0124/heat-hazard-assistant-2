@@ -12,7 +12,7 @@ const containerStyle = {
 const indiaCenter = { lat: 20.5937, lng: 78.9629 };
 
 // Define libraries array outside component to prevent reloads
-const GOOGLE_MAPS_LIBRARIES = ['visualization', 'places'];
+const GOOGLE_MAPS_LIBRARIES = ['visualization', 'places', 'routes'];
 
 // Major cities in India with their coordinates
 const indianCities = [

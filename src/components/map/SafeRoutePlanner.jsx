@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next'; // Add this import for translati
 import RouteHeatStrokeRisk from './RouteHeatStrokeRisk_fixed';
 
 // Define libraries array outside the component to prevent unnecessary reloads
-const GOOGLE_MAPS_LIBRARIES = ["places", "routes"];
+const GOOGLE_MAPS_LIBRARIES = ["visualization", "places", "routes"];
 
 const SafeRoutePlanner = () => {
   const { t } = useTranslation(); // Initialize translation hook
